@@ -25,7 +25,7 @@ pub fn lower_optim(graph: &Graph, meta: Metadata) -> Result<Kernel, Error> {
             iter_space: root_node.shape.clone(),
         },
         params: Vec::with_capacity(3),
-        meta: vec![false; meta.fields],
+        meta: vec![false; meta.fields].into_boxed_slice(),
     };
 
     if graph

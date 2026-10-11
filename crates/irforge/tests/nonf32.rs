@@ -1,15 +1,15 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, Metadata,
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
         OptCompilationOptions, SimpleDType,
     },
-    nn::{MEAN_SQUARED_ERROR, Optim},
+    nn::{MEAN_SQUARED_ERROR, Optim, add, input, mul},
     tensor::f16,
 };
 
 #[test]
 fn mul_add_f16() {
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
 
@@ -17,37 +17,36 @@ fn mul_add_f16() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, n], SimpleDType::F16);
+        let b = input(&[m, n], SimpleDType::F16);
+        let c = input(&[m, n], SimpleDType::F16);
 
-        let a = graph.input(&[m, n], SimpleDType::F16);
-        let b = graph.input(&[m, n], SimpleDType::F16);
-        let c = graph.input(&[m, n], SimpleDType::F16);
+        let x = mul(a, b);
+        add(c, x);
+    });
 
-        let x = graph.mul(a, b);
-        graph.add(c, x);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), 32, 32];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-
     let options = CompilationOptions {
         target: ctx.detect_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [briny::raw::cast::reinterpret(1e-3_f32), 32, 32];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
-    let saved_tensors =
-        ctx.alloc_tensors(&graph, &saved, meta_binding, &state)
-            .unwrap();
+    let saved_tensors = ctx
+        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .unwrap();
 
     let ir = graph.lower(meta, &options, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();

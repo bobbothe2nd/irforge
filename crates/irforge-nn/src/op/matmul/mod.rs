@@ -14,17 +14,17 @@ use std::{format, vec, vec::Vec};
 mod generic;
 mod wmma;
 
-pub fn lower_matmul_recursive<'a>(
+pub fn lower_matmul_recursive(
     eval_node: impl Fn(
         NodeId,
         NodeId,
         &NodeInput,
         ValueId,
         &mut Vec<NodeId>,
-        &'a Graph<'a>,
+        &Graph,
         &[Option<ParamId>],
         &[Option<ParamId>],
-        &mut LinkedKernel<'a>,
+        &mut LinkedKernel,
         ValueId,
         ValueId,
         ValueId,
@@ -40,11 +40,11 @@ pub fn lower_matmul_recursive<'a>(
     resolved: &mut Vec<NodeId>,
     backwardness: Option<u8>,
     node_id: NodeId,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     out: ValueId,
     node_params: &[Option<ParamId>],
     saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel<'a>,
+    kernel: &mut LinkedKernel,
     base: ValueId,
     _idx: ValueId,
     local_row: ValueId,
@@ -78,7 +78,7 @@ pub fn lower_matmul_recursive<'a>(
             kind: ErrorKind::ParamNotMaterialized,
             ctx: (),
         })?;
-        let shape = &graph.nodes[node.inputs[1]].shape;
+        let shape = graph.nodes[node.inputs[1]].shape.clone();
 
         a_node = NodeInput::Node(node_id);
         b_node = NodeInput::Param { param, shape };
@@ -88,7 +88,7 @@ pub fn lower_matmul_recursive<'a>(
             kind: ErrorKind::ParamNotMaterialized,
             ctx: (),
         })?;
-        let shape = &graph.nodes[node.inputs[0]].shape;
+        let shape = graph.nodes[node.inputs[0]].shape.clone();
 
         a_node = NodeInput::Param { param, shape };
         b_node = NodeInput::Node(node_id);
@@ -102,7 +102,10 @@ pub fn lower_matmul_recursive<'a>(
 
     let mut a_node_shape = match a_node {
         NodeInput::Node(node) => graph.nodes[node].shape.clone(),
-        NodeInput::Param { param: _, shape } => shape.to_vec(),
+        NodeInput::Param {
+            param: _,
+            ref shape,
+        } => shape.clone(),
     };
 
     if transpose_a {
@@ -112,7 +115,10 @@ pub fn lower_matmul_recursive<'a>(
 
     let mut b_node_shape = match b_node {
         NodeInput::Node(node) => graph.nodes[node].shape.clone(),
-        NodeInput::Param { param: _, shape } => shape.to_vec(),
+        NodeInput::Param {
+            param: _,
+            ref shape,
+        } => shape.clone(),
     };
 
     if transpose_b {
@@ -201,11 +207,11 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         }
     }
 
-    fn valid_shape<'a>(
+    fn valid_shape(
         node_id: NodeId,
-        node: &Node<'a>,
-        graph: &Graph<'a>,
-        errors: &mut Vec<Error<GraphErrorContext<'a>>>,
+        node: &Node,
+        graph: &Graph,
+        errors: &mut Vec<Error<GraphErrorContext>>,
     ) {
         if node.inputs.len() != 2 {
             errors.push(Error {
@@ -288,7 +294,7 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
             display: |inputs| format!("{:?} @ {:?}", inputs[0], inputs[1]),
             valid_dispatch: DispatchOptions::Any,
         },
-        inputs: vec![a, b],
+        inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape,
         dtype: graph.nodes[a].dtype,

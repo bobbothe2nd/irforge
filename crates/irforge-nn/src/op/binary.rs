@@ -11,11 +11,11 @@ use fused_gpu::{
 };
 use std::{format, vec, vec::Vec};
 
-fn valid_binary<'a>(
+fn valid_binary(
     node_id: NodeId,
-    node: &Node<'a>,
-    graph: &Graph<'a>,
-    errors: &mut Vec<Error<GraphErrorContext<'a>>>,
+    node: &Node,
+    graph: &Graph,
+    errors: &mut Vec<Error<GraphErrorContext>>,
 ) {
     if node.inputs.len() != 2 {
         errors.push(Error {
@@ -71,7 +71,7 @@ fn save_mul_div(_node_id: NodeId, node: &Node, graph: &Graph, saved: &mut [SaveI
     }
 }
 
-pub fn add<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
+pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
@@ -80,10 +80,10 @@ pub fn add<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
-                &'a Graph<'a>,
+                &Graph,
                 &[Option<ParamId>],
                 &[Option<ParamId>],
-                &mut LinkedKernel<'a>,
+                &mut LinkedKernel,
                 ValueId,
                 ValueId,
                 ValueId,
@@ -99,11 +99,11 @@ pub fn add<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
-                    graph: &'a Graph<'a>,
+                    graph: &Graph,
                     out: ValueId,
                     node_params: &[Option<ParamId>],
                     saved_params: &[Option<ParamId>],
-                    kernel: &mut LinkedKernel<'a>,
+                    kernel: &mut LinkedKernel,
                     base: ValueId,
                     idx: ValueId,
                     local_row: ValueId,
@@ -226,14 +226,14 @@ pub fn add<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
             prefer_separate: false,
             valid_dispatch: DispatchOptions::Any,
         },
-        inputs: vec![a, b],
+        inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape: get_shape(a, b, graph),
         dtype: graph.nodes[a].dtype,
     })
 }
 
-pub fn mul<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
+pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
@@ -242,10 +242,10 @@ pub fn mul<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
-                &'a Graph<'a>,
+                &Graph,
                 &[Option<ParamId>],
                 &[Option<ParamId>],
-                &mut LinkedKernel<'a>,
+                &mut LinkedKernel,
                 ValueId,
                 ValueId,
                 ValueId,
@@ -261,11 +261,11 @@ pub fn mul<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
-                    graph: &'a Graph<'a>,
+                    graph: &Graph,
                     out: ValueId,
                     node_params: &[Option<ParamId>],
                     saved_params: &[Option<ParamId>],
-                    kernel: &mut LinkedKernel<'a>,
+                    kernel: &mut LinkedKernel,
                     base: ValueId,
                     idx: ValueId,
                     local_row: ValueId,
@@ -439,14 +439,14 @@ pub fn mul<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
             prefer_separate: false,
             valid_dispatch: DispatchOptions::Any,
         },
-        inputs: vec![a, b],
+        inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape: get_shape(a, b, graph),
         dtype: graph.nodes[a].dtype,
     })
 }
 
-pub fn sub<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
+pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
@@ -455,10 +455,10 @@ pub fn sub<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
-                &'a Graph<'a>,
+                &Graph,
                 &[Option<ParamId>],
                 &[Option<ParamId>],
-                &mut LinkedKernel<'a>,
+                &mut LinkedKernel,
                 ValueId,
                 ValueId,
                 ValueId,
@@ -474,11 +474,11 @@ pub fn sub<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
-                    graph: &'a Graph<'a>,
+                    graph: &Graph,
                     out: ValueId,
                     node_params: &[Option<ParamId>],
                     saved_params: &[Option<ParamId>],
-                    kernel: &mut LinkedKernel<'a>,
+                    kernel: &mut LinkedKernel,
                     base: ValueId,
                     idx: ValueId,
                     local_row: ValueId,
@@ -634,14 +634,14 @@ pub fn sub<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
             prefer_separate: false,
             valid_dispatch: DispatchOptions::Any,
         },
-        inputs: vec![a, b],
+        inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape: get_shape(a, b, graph),
         dtype: graph.nodes[a].dtype,
     })
 }
 
-pub fn div<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
+pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
@@ -650,10 +650,10 @@ pub fn div<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
-                &'a Graph<'a>,
+                &Graph,
                 &[Option<ParamId>],
                 &[Option<ParamId>],
-                &mut LinkedKernel<'a>,
+                &mut LinkedKernel,
                 ValueId,
                 ValueId,
                 ValueId,
@@ -669,11 +669,11 @@ pub fn div<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
-                    graph: &'a Graph<'a>,
+                    graph: &Graph,
                     out: ValueId,
                     node_params: &[Option<ParamId>],
                     saved_params: &[Option<ParamId>],
-                    kernel: &mut LinkedKernel<'a>,
+                    kernel: &mut LinkedKernel,
                     base: ValueId,
                     idx: ValueId,
                     local_row: ValueId,
@@ -872,14 +872,14 @@ pub fn div<'a>(graph: &mut Graph<'a>, a: NodeId, b: NodeId) -> NodeId {
             prefer_separate: false,
             valid_dispatch: DispatchOptions::Any,
         },
-        inputs: vec![a, b],
+        inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape: get_shape(a, b, graph),
         dtype: graph.nodes[a].dtype,
     })
 }
 
-fn get_shape(a: NodeId, b: NodeId, graph: &Graph) -> Vec<MetaId> {
+fn get_shape(a: NodeId, b: NodeId, graph: &Graph) -> Box<[MetaId]> {
     let a_node = &graph.nodes[a];
     let b_node = &graph.nodes[b];
 
@@ -891,7 +891,7 @@ fn get_shape(a: NodeId, b: NodeId, graph: &Graph) -> Vec<MetaId> {
 }
 
 fn read_saved(
-    kernel: &mut LinkedKernel<'_>,
+    kernel: &mut LinkedKernel,
     index: ValueId,
     param: Option<ParamId>,
     graph: &Graph,

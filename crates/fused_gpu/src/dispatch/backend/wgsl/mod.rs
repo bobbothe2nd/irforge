@@ -6,7 +6,9 @@ use crate::{
             MetaId, NodeId, Param,
             kernel::{Dependencies, RawKernel, Redirect, remap::eval_dependency_order},
         },
-    }, errors::{Error, ErrorKind}, tensor::{Block, ToBuffer, build_dims},
+    },
+    errors::{Error, ErrorKind},
+    tensor::{Block, ToBuffer, build_dims},
 };
 use briny::raw::cast::cast_slice;
 use std::vec::Vec;
@@ -122,7 +124,7 @@ impl GpuContext {
 #[derive(Debug, Clone)]
 pub struct GpuKernel {
     kernel: ComputePipeline,
-    iter_space: Vec<MetaId>,
+    iter_space: Box<[MetaId]>,
     block: Block,
 }
 

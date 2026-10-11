@@ -4,7 +4,9 @@ use crate::{
     dispatch::backend::{
         Graph, MetaId, NodeId, OptimState, Param, StateDim,
         kernel::{Dependencies, RawKernel, Redirect, SaveIndicator},
-    }, errors::Error, tensor::{Block, Tensor, ToBuffer, build_dims},
+    },
+    errors::Error,
+    tensor::{Block, Tensor, ToBuffer, build_dims},
 };
 use briny::{
     raw::{
@@ -366,7 +368,7 @@ impl<B: GpuBackend> GpuContext<B> {
     /// Regardless, errors must be handled properly in critical code.
     pub fn compile<'a>(
         &self,
-        ir: &'a backend::kernel::KernelGroup<'a>,
+        ir: &'a backend::kernel::KernelGroup,
         options: &CompilationOptions,
     ) -> Result<KernelGroup<'a, B>, Error> {
         let forward = ir
@@ -391,7 +393,7 @@ impl<B: GpuBackend> GpuContext<B> {
                         Redirect::Unmasked((
                             self.inner.compile(&kernel.raw, &params, options)?,
                             kernel.raw.root,
-                            kernel.params.as_slice(),
+                            &*kernel.params,
                         ))
                     }
                     Redirect::Redirected(idx) => Redirect::Redirected(*idx),
@@ -426,7 +428,7 @@ impl<B: GpuBackend> GpuContext<B> {
                         Redirect::Unmasked((
                             self.inner.compile(&kernel.raw, &params, options)?,
                             kernel.raw.root,
-                            kernel.params.as_slice(),
+                            &*kernel.params,
                         ))
                     }
                     Redirect::Redirected(idx) => Redirect::Redirected(*idx),
@@ -506,7 +508,7 @@ impl<B: GpuBackend> GpuContext<B> {
 
     pub fn alloc_tensors(
         &self,
-        graph: &Graph<'_>,
+        graph: &Graph,
         saved: &[SaveIndicator],
         meta: &[u32],
         state: &OptimState,

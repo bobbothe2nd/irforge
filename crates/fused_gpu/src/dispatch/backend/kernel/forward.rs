@@ -16,13 +16,13 @@ use core::cmp::Ordering;
 use std::{vec, vec::Vec};
 
 #[inline]
-pub fn lower_forward<'a>(
-    graph: &'a Graph<'a>,
+pub fn lower_forward(
+    graph: &Graph,
     meta: Metadata,
     saved: &[SaveIndicator],
     options: &CompilationOptions,
-) -> Result<KernelsChained<'a>, Error> {
-    let mut kernels: Vec<Dependencies<LinkedKernel<'a>>> = Vec::new();
+) -> Result<KernelsChained, Error> {
+    let mut kernels: Vec<Dependencies<LinkedKernel>> = Vec::new();
 
     let mut roots = Vec::new();
 
@@ -115,8 +115,8 @@ pub fn lower_forward<'a>(
                     root,
                     iter_space: root_node.shape.clone(),
                 },
-                params: vec![false; params.len()],
-                meta: vec![false; meta.fields],
+                params: vec![false; params.len()].into_boxed_slice(),
+                meta: vec![false; meta.fields].into_boxed_slice(),
                 ops: Vec::new(),
             };
 
@@ -295,16 +295,16 @@ fn ensure_param_slot(
     })
 }
 
-fn eval_node<'a>(
+fn eval_node(
     root: NodeId,
     input: NodeId,
     node_id: &NodeInput,
     out: ValueId,
     resolved: &mut Vec<NodeId>,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     node_params: &[Option<ParamId>],
     saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel<'a>,
+    kernel: &mut LinkedKernel,
     index: ValueId,
     base: ValueId,
     local_row: ValueId,
@@ -326,7 +326,7 @@ fn eval_node<'a>(
         }
     };
 
-    kernel.ops.push(&graph.nodes[node_id].op);
+    kernel.ops.push(graph.nodes[node_id].op);
 
     let node = &graph.nodes[node_id];
 

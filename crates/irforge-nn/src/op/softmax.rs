@@ -11,17 +11,17 @@ use fused_gpu::{
 };
 use std::{format, vec, vec::Vec};
 
-pub fn lower_softmax_recursive<'a>(
+pub fn lower_softmax_recursive(
     eval_node: impl Fn(
         NodeId,
         NodeId,
         &NodeInput,
         ValueId,
         &mut Vec<NodeId>,
-        &'a Graph<'a>,
+        &Graph,
         &[Option<ParamId>],
         &[Option<ParamId>],
-        &mut LinkedKernel<'a>,
+        &mut LinkedKernel,
         ValueId,
         ValueId,
         ValueId,
@@ -37,11 +37,11 @@ pub fn lower_softmax_recursive<'a>(
     resolved: &mut Vec<NodeId>,
     backwardness: Option<u8>,
     node_id: NodeId,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     _out: ValueId,
     node_params: &[Option<ParamId>],
     saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel<'a>,
+    kernel: &mut LinkedKernel,
     base: ValueId,
     _idx: ValueId,
     local_row: ValueId,
@@ -752,7 +752,7 @@ pub fn softmax(graph: &mut Graph, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::ReqCol,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })

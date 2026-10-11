@@ -8,7 +8,10 @@ use fused_gpu::{
             NodeId, NopGpuContext,
             kernel::{Dependencies, RawKernel, Redirect, SaveIndicator},
         },
-    }, errors::Error, io::{BpatHeader, SerialTensorError}, tensor::{Block, Tensor, ToBuffer, bf16, f16},
+    },
+    errors::Error,
+    io::{BpatHeader, SerialTensorError},
+    tensor::{Block, Tensor, ToBuffer, bf16, f16},
 };
 
 use core::ops::{Deref, DerefMut};
@@ -151,12 +154,17 @@ impl<B: GpuBackend> GpuContext<B> {
     #[inline]
     pub fn alloc_tensors(
         &self,
-        graph: &Graph<'_>,
+        graph: &Graph,
         saved: &SavedNodes,
         meta: &MetaBinding,
         state: &OptimState,
     ) -> Result<AllocTensors<B>, Error> {
-        self.0.alloc_tensors(&graph.0, &saved.0, &meta.0, state)
+        self.0.alloc_tensors(
+            graph.0.as_ref().expect("graph already borrowed"),
+            &saved.0,
+            &meta.0,
+            state,
+        )
     }
 
     #[inline]
@@ -253,7 +261,7 @@ impl<B: GpuBackend> GpuContext<B> {
     #[inline]
     pub fn compile<'a>(
         &self,
-        ir: &'a KernelGroup<'a>,
+        ir: &'a KernelGroup,
         options: &CompilationOptions,
     ) -> Result<GpuKernelGroup<'a, B>, Error> {
         self.0.compile(ir, options)

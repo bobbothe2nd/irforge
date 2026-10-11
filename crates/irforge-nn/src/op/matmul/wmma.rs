@@ -10,17 +10,17 @@ use fused_gpu::{
 };
 use std::vec::Vec;
 
-pub fn forward_matmul<'a>(
+pub fn forward_matmul(
     eval_node: impl Fn(
         NodeId,
         NodeId,
         &NodeInput,
         ValueId,
         &mut Vec<NodeId>,
-        &'a Graph<'a>,
+        &Graph,
         &[Option<ParamId>],
         &[Option<ParamId>],
-        &mut LinkedKernel<'a>,
+        &mut LinkedKernel,
         ValueId,
         ValueId,
         ValueId,
@@ -42,11 +42,11 @@ pub fn forward_matmul<'a>(
     swap_b: bool,
     a_node: &NodeInput,
     b_node: &NodeInput,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     out: ValueId,
     node_params: &[Option<ParamId>],
     saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel<'a>,
+    kernel: &mut LinkedKernel,
     base: ValueId,
     row: ValueId,
     col: ValueId,

@@ -57,10 +57,10 @@ macro_rules! lower_unary {
             &NodeInput,
             ValueId,
             &mut Vec<NodeId>,
-            &'a Graph<'a>,
+            &Graph,
             &[Option<ParamId>],
             &[Option<ParamId>],
-            &mut LinkedKernel<'a>,
+            &mut LinkedKernel,
             ValueId,
             ValueId,
             ValueId,
@@ -76,11 +76,11 @@ macro_rules! lower_unary {
         resolved: &mut Vec<NodeId>,
         backwardness: Option<u8>,
         node_id: NodeId,
-        graph: &'a Graph<'a>,
+        graph: &Graph,
         out: ValueId,
         node_params: &[Option<ParamId>],
         saved_params: &[Option<ParamId>],
-        kernel: &mut LinkedKernel<'a>,
+        kernel: &mut LinkedKernel,
         base: ValueId,
         idx: ValueId,
         local_row: ValueId,
@@ -158,7 +158,7 @@ macro_rules! lower_unary {
                                     kind: ErrorKind::ParamNotMaterialized,
                                     ctx: (),
                                 })?,
-                                shape: &node.shape,
+                                shape: node.shape.clone(),
                             },
                             saved,
                             resolved,
@@ -226,18 +226,18 @@ macro_rules! lower_unary {
     };
 }
 
-pub fn log<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn log(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     kernel.raw.overwrite_var(out, Op::Log { x: inp });
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     kernel.raw.accum_var(
                         out,
                         Op::Div {
@@ -261,24 +261,24 @@ pub fn log<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn tanh<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn tanh(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     kernel.raw.overwrite_var(out, Op::Tanh { x: inp });
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -320,19 +320,19 @@ pub fn tanh<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn elu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn elu(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     let zero = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -372,7 +372,7 @@ pub fn elu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     let zero = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -427,19 +427,19 @@ pub fn elu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn relu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn relu(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     let zero = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -450,7 +450,7 @@ pub fn relu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     let zero = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -483,13 +483,13 @@ pub fn relu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn gelu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn gelu(graph: &mut Graph, x: NodeId) -> NodeId {
     const THAT_RANDOM_DECIMAL: f32 = 0.044_715;
     const SQRT_FRAC_PI_2: f32 = 0.797_884_6;
 
@@ -498,7 +498,7 @@ pub fn gelu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     let gelu_a = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -585,7 +585,7 @@ pub fn gelu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
 
                     Ok::<ValueId, Error>(tanh_u)
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     let half = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -726,24 +726,24 @@ pub fn gelu<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn exp<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn exp(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     kernel.raw.overwrite_var(out, Op::Exp { x: inp });
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     kernel.raw.accum_var(
                         out,
                         Op::Mul {
@@ -767,24 +767,24 @@ pub fn exp<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn abs<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn abs(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 true,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     kernel.raw.overwrite_var(out, Op::Abs { x: inp });
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId, upstream: ValueId| {
                     let zero = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
@@ -806,14 +806,14 @@ pub fn abs<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
                             kernel.raw.accum_var(out, Op::CopyVar { id: upstream });
                             Ok(())
                         },
-                        |kernel: &mut LinkedKernel<'a>| {
+                        |kernel: &mut LinkedKernel| {
                             kernel.push_if_else(
                                 le0,
                                 |kernel| {
                                     kernel.raw.accum_var(out, Op::Neg { x: upstream });
                                     Ok(())
                                 },
-                                |kernel: &mut LinkedKernel<'a>| {
+                                |kernel: &mut LinkedKernel| {
                                     kernel.raw.accum_var(out, dtype.constant_float(0.0)?);
                                     Ok(())
                                 },
@@ -837,24 +837,24 @@ pub fn abs<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })
 }
 
-pub fn neg<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
+pub fn neg(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
                 false,
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, inp: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, inp: ValueId| {
                     kernel.raw.overwrite_var(out, Op::Neg { x: inp });
 
                     Ok::<(), Error>(())
                 },
-                |kernel: &mut LinkedKernel<'a>, out: ValueId, _: ValueId, upstream: ValueId| {
+                |kernel: &mut LinkedKernel, out: ValueId, _: ValueId, upstream: ValueId| {
                     kernel.raw.accum_var(out, Op::Neg { x: upstream });
 
                     Ok::<(), Error>(())
@@ -879,7 +879,7 @@ pub fn neg<'a>(graph: &mut Graph<'a>, x: NodeId) -> NodeId {
             valid_dispatch: DispatchOptions::Any,
         },
         outputs: Vec::new(),
-        inputs: vec![x],
+        inputs: vec![x].into_boxed_slice(),
         shape: graph.nodes[x].shape.clone(),
         dtype: graph.nodes[x].dtype,
     })

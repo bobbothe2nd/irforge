@@ -16,12 +16,12 @@ use core::cmp::Ordering;
 use std::{vec, vec::Vec};
 
 #[inline]
-pub fn lower_backward<'a>(
-    graph: &'a Graph<'a>,
+pub fn lower_backward(
+    graph: &Graph,
     meta: Metadata,
     saved: &[SaveIndicator],
     options: &CompilationOptions,
-) -> Result<KernelsChained<'a>, Error> {
+) -> Result<KernelsChained, Error> {
     let tile_size = options.opt.tile_size;
 
     let shared_size = tile_size * tile_size;
@@ -89,7 +89,7 @@ pub fn lower_backward<'a>(
         }
     }
 
-    let mut grad_kernels: Vec<Dependencies<LinkedKernel<'a>>> = Vec::new();
+    let mut grad_kernels: Vec<Dependencies<LinkedKernel>> = Vec::new();
     let mut kernels = Vec::new();
 
     for input in graph
@@ -226,16 +226,16 @@ pub fn lower_backward<'a>(
     Ok(KernelsChained { kernels, params })
 }
 
-fn eval_grad<'a>(
+fn eval_grad(
     root: NodeId,
     input: NodeId,
     node_id: &NodeInput,
     upstream: ValueId,
     resolved: &mut Vec<NodeId>,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     node_params: &[Option<ParamId>],
     saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel<'a>,
+    kernel: &mut LinkedKernel,
     idx: ValueId,
     base: ValueId,
     local_row: ValueId,
@@ -263,7 +263,7 @@ fn eval_grad<'a>(
         }
     };
 
-    kernel.ops.push(&graph.nodes[node_id].op);
+    kernel.ops.push(graph.nodes[node_id].op);
 
     let mut deepest = Vec::new();
 
@@ -370,13 +370,13 @@ fn eval_grad<'a>(
     Ok(deepest)
 }
 
-fn gen_kernel<'a>(
+fn gen_kernel(
     meta: Metadata,
     params: &[Param],
     block: [u32; 3],
     input: NodeId,
     root_node: &Node,
-) -> (LinkedKernel<'a>, ValueId, ValueId) {
+) -> (LinkedKernel, ValueId, ValueId) {
     let mut kernel = LinkedKernel {
         raw: RawKernel {
             meta,
@@ -387,8 +387,8 @@ fn gen_kernel<'a>(
             root: input,
             iter_space: root_node.shape.clone(),
         },
-        params: vec![false; params.len()],
-        meta: vec![false; meta.fields],
+        params: vec![false; params.len()].into_boxed_slice(),
+        meta: vec![false; meta.fields].into_boxed_slice(),
         ops: Vec::new(),
     };
 

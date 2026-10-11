@@ -32,7 +32,9 @@ use crate::{
             kernel::{Dependencies, RawKernel, Redirect, remap::eval_dependency_order},
             rocm::generate::generate_hip,
         },
-    }, errors::{Error, ErrorKind}, tensor::{Block, build_dims},
+    },
+    errors::{Error, ErrorKind},
+    tensor::{Block, build_dims},
 };
 
 pub mod generate;
@@ -162,7 +164,7 @@ impl GpuBackend for GpuContext {
 
         Ok(Kernel {
             block: src.block,
-            iter_space: src.iter_space.clone().into_boxed_slice(),
+            iter_space: src.iter_space.clone(),
             func,
         })
     }

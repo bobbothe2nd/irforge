@@ -1,6 +1,6 @@
-# `ferrograd-nn`
+# `irforge-nn`
 
-Standard operations for use in `fused_gpu` and `ferrograd`. Often referred to as a standard library by `ferrograd`.
+Standard operations for use in `fused_gpu` and `irforge`. Often referred to as a standard library by `irforge`.
 
 Known correct operations:
 

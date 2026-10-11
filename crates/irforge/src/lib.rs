@@ -1,6 +1,7 @@
 mod backend;
 mod graph;
 mod id;
+mod meta;
 mod optim;
 
 pub use fused_gpu::tensor;
@@ -13,8 +14,8 @@ pub mod dispatch {
     };
 
     pub use fused_gpu::dispatch::backend::{
-        Axis, DType, DispatchOptions, GraphOp, LossType, Metadata, Node, Op, OptimState, OptimType,
-        Param, ParamTy, SharedAlloc, SimpleDType, StateDim, Value, ValueState,
+        Axis, DType, DispatchOptions, GraphOp, LossType, Node, Op, OptimState, OptimType, Param,
+        ParamTy, SharedAlloc, SimpleDType, StateDim, Value, ValueState,
     };
 
     pub use fused_gpu::dispatch::backend::kernel::{
@@ -24,12 +25,11 @@ pub mod dispatch {
 
     pub use fused_gpu::dispatch::KernelGroup as GpuKernelGroup;
 
-    pub use fused_gpu::errors::GraphErrorContext;
-
     pub use crate::{
         backend::{GpuContext, MetaBinding, SavedNodes, Schedule},
-        graph::{DefineOps, Graph},
+        graph::Graph,
         id::{EdgeId, MetaId, NodeId, ParamId, SharedId, ValueId},
+        meta::{MetaBuilder, Metadata},
     };
 
     pub mod backend {
@@ -40,7 +40,7 @@ pub mod dispatch {
 }
 
 pub mod errors {
-    pub use fused_gpu::errors::{Error, ErrorKind};
+    pub use fused_gpu::errors::{Error, ErrorKind, GraphErrorContext};
 
     pub type Result<T> = core::result::Result<T, Error>;
 }
@@ -68,8 +68,14 @@ pub mod io {
 
 pub mod nn {
     pub use crate::optim::Optim;
+
+    pub use crate::graph::{
+        GraphGuard, abs, add, constant_bf16, constant_f16, constant_f32, constant_i32,
+        constant_u32, div, elu, exp, gelu, get_graph, input, log, matmul, mul, neg, relu, softmax,
+        sub, tanh,
+    };
+
     pub use irforge_nn::loss::*;
-    pub use irforge_nn::op::*;
 }
 
 pub mod codegen {

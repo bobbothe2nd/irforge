@@ -34,7 +34,7 @@ impl<C: Debug> Debug for Error<C> {
     }
 }
 
-impl From<Error> for Error<GraphErrorContext<'_>> {
+impl From<Error> for Error<GraphErrorContext> {
     fn from(err: Error) -> Self {
         Self {
             msg: err.msg,
@@ -44,8 +44,8 @@ impl From<Error> for Error<GraphErrorContext<'_>> {
     }
 }
 
-impl From<Error<GraphErrorContext<'_>>> for Error {
-    fn from(err: Error<GraphErrorContext<'_>>) -> Self {
+impl From<Error<GraphErrorContext>> for Error {
+    fn from(err: Error<GraphErrorContext>) -> Self {
         Self {
             msg: err.msg,
             kind: err.kind,
@@ -60,7 +60,7 @@ impl Display for Error {
     }
 }
 
-impl Display for Error<GraphErrorContext<'_>> {
+impl Display for Error<GraphErrorContext> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         debug_assert_eq!(self.kind, ErrorKind::ComputeGraphError);
 
@@ -137,6 +137,7 @@ pub enum ErrorKind {
     PeerAccessError,
     UnresolvedSymbol,
     LinkingError,
+    InvalidMeta,
 }
 
 impl Display for ErrorKind {
@@ -176,12 +177,13 @@ impl Display for ErrorKind {
             Self::PeerAccessError => f.write_str("peer access error"),
             Self::UnresolvedSymbol => f.write_str("unresolved symbol"),
             Self::LinkingError => f.write_str("linking error"),
+            Self::InvalidMeta => f.write_str("invalid meta"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum GraphErrorContext<'a> {
+pub enum GraphErrorContext {
     Unrelated,
 
     CycleDetected {
@@ -202,8 +204,8 @@ pub enum GraphErrorContext<'a> {
 
     ShapeMismatch {
         node: NodeId,
-        all_hand_sides: Vec<Vec<MetaId>>,
-        op: GraphOp<'a>,
+        all_hand_sides: Vec<Box<[MetaId]>>,
+        op: GraphOp,
     },
 
     RankMismatch {
@@ -230,19 +232,19 @@ pub enum GraphErrorContext<'a> {
 
     CannotInferShape {
         node: NodeId,
-        all_hand_sides: Vec<Vec<MetaId>>,
-        op: GraphOp<'a>,
+        all_hand_sides: Vec<Box<[MetaId]>>,
+        op: GraphOp,
     },
 }
 
-impl From<()> for GraphErrorContext<'_> {
+impl From<()> for GraphErrorContext {
     #[allow(clippy::ignored_unit_patterns)]
     fn from(_: ()) -> Self {
         Self::Unrelated
     }
 }
 
-impl Display for GraphErrorContext<'_> {
+impl Display for GraphErrorContext {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Unrelated => {
@@ -320,4 +322,4 @@ impl Display for GraphErrorContext<'_> {
     }
 }
 
-impl CoreError for GraphErrorContext<'_> {}
+impl CoreError for GraphErrorContext {}

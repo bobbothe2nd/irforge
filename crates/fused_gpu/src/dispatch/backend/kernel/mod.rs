@@ -25,9 +25,9 @@ pub mod remap;
 
 /// Forward, backward, loss, and optim kernel IR.
 #[derive(Debug)]
-pub struct KernelGroup<'a> {
-    pub(crate) forward: KernelsRedirected<'a>,
-    pub(crate) backward: KernelsRedirected<'a>,
+pub struct KernelGroup {
+    pub(crate) forward: KernelsRedirected,
+    pub(crate) backward: KernelsRedirected,
     pub(crate) loss: Kernel,
     pub(crate) optim: Kernel,
 }
@@ -93,24 +93,24 @@ impl SaveIndicator {
 }
 
 #[derive(Debug)]
-pub struct KernelsChained<'a> {
-    pub kernels: Vec<Dependencies<LinkedKernel<'a>>>,
+pub struct KernelsChained {
+    pub kernels: Vec<Dependencies<LinkedKernel>>,
     pub params: Vec<Param>,
 }
 
 #[derive(Debug)]
-pub struct KernelsRedirected<'a> {
-    pub kernels: Vec<Dependencies<Redirect<LinkedKernel<'a>>>>,
+pub struct KernelsRedirected {
+    pub kernels: Vec<Dependencies<Redirect<LinkedKernel>>>,
     pub params: Vec<Param>,
 }
 
-impl<'a> KernelsChained<'a> {
+impl KernelsChained {
     pub fn lower(
-        graph: &'a Graph<'a>,
+        graph: &Graph,
         meta: Metadata,
         saved: &[SaveIndicator],
         options: &CompilationOptions,
-    ) -> Result<KernelGroup<'a>, Error> {
+    ) -> Result<KernelGroup, Error> {
         if graph.nodes.is_empty() {
             return Err(Error {
                 msg: "graph empty",
@@ -157,8 +157,8 @@ pub enum Redirect<T> {
     Redirected(usize),
 }
 
-fn eliminate_kernels<'a>(kernels: KernelsChained<'a>) -> KernelsRedirected<'a> {
-    let mut kernels_optimized: Vec<Dependencies<Redirect<LinkedKernel<'a>>>> = Vec::new();
+fn eliminate_kernels(kernels: KernelsChained) -> KernelsRedirected {
+    let mut kernels_optimized: Vec<Dependencies<Redirect<LinkedKernel>>> = Vec::new();
 
     for kernel in kernels.kernels {
         let mut unique_id = usize::MAX;
@@ -196,7 +196,7 @@ fn eliminate_kernels<'a>(kernels: KernelsChained<'a>) -> KernelsRedirected<'a> {
 pub struct Kernel {
     pub raw: RawKernel,
     pub params: Vec<Param>,
-    pub meta: Vec<bool>,
+    pub meta: Box<[bool]>,
 }
 
 impl Kernel {
@@ -214,14 +214,14 @@ impl Kernel {
 }
 
 #[derive(Debug, Clone)]
-pub struct LinkedKernel<'a> {
+pub struct LinkedKernel {
     pub raw: RawKernel,
-    pub params: Vec<bool>,
-    pub meta: Vec<bool>,
-    ops: Vec<&'a GraphOp<'a>>,
+    pub params: Box<[bool]>,
+    pub meta: Box<[bool]>,
+    ops: Vec<GraphOp>,
 }
 
-impl LinkedKernel<'_> {
+impl LinkedKernel {
     pub fn push_if<F: FnOnce(&mut Self) -> Result<R, Error>, R>(
         &mut self,
         cond: ValueId,
@@ -367,7 +367,7 @@ impl LinkedKernel<'_> {
     }
 }
 
-impl LinkedKernel<'_> {
+impl LinkedKernel {
     pub fn register_param(&mut self, id: ParamId) {
         self.params[id] = true;
     }
@@ -397,7 +397,7 @@ pub struct RawKernel {
 
     pub block: Block,
 
-    pub iter_space: Vec<MetaId>,
+    pub iter_space: Box<[MetaId]>,
 
     pub root: NodeId,
 }
@@ -647,8 +647,11 @@ impl RawKernel {
     }
 }
 
-pub enum NodeInput<'a> {
-    Param { param: ParamId, shape: &'a [MetaId] },
+pub enum NodeInput {
+    Param {
+        param: ParamId,
+        shape: Box<[MetaId]>,
+    },
 
     Node(NodeId),
 }

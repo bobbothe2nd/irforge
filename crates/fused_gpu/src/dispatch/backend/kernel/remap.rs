@@ -10,7 +10,7 @@ use std::{collections::HashMap, vec::Vec};
 /// Sorts a graph-like structure from these dependencies, assuming `dep` is the index in this slice
 pub fn topo_sort<T: Clone>(
     nodes: &[Dependencies<T>],
-) -> Result<Vec<Dependencies<T>>, Error<GraphErrorContext<'_>>> {
+) -> Result<Vec<Dependencies<T>>, Error<GraphErrorContext>> {
     let n = nodes.len();
 
     let mut in_degree = vec![0_usize; n];
@@ -94,7 +94,7 @@ pub fn topo_sort<T: Clone>(
 /// Assumes redirections and dependencies are indices into the graph
 pub fn topo_sort_indirect<T: Clone>(
     nodes: &[Dependencies<Redirect<T>>],
-) -> Result<Vec<Dependencies<Redirect<T>>>, Error<GraphErrorContext<'_>>> {
+) -> Result<Vec<Dependencies<Redirect<T>>>, Error<GraphErrorContext>> {
     let n = nodes.len();
 
     let mut in_degree = vec![0_usize; n];

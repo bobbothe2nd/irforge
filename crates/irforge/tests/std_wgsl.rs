@@ -1,14 +1,17 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, Metadata,
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
         OptCompilationOptions, SimpleDType,
     },
-    nn::{CROSS_ENTROPY, MEAN_SQUARED_ERROR, Optim},
+    nn::{
+        CROSS_ENTROPY, MEAN_SQUARED_ERROR, Optim, add, constant_f32, div, input, matmul, mul,
+        softmax, sub,
+    },
 };
 
 #[test]
 fn mul_add_forward_backward() {
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
 
@@ -16,18 +19,21 @@ fn mul_add_forward_backward() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, n], SimpleDType::F32);
+        let b = input(&[m, n], SimpleDType::F32);
+        let c = input(&[m, n], SimpleDType::F32);
 
-        let a = graph.input(&[m, n], SimpleDType::F32);
-        let b = graph.input(&[m, n], SimpleDType::F32);
-        let c = graph.input(&[m, n], SimpleDType::F32);
+        let x = mul(a, b);
+        add(c, x);
+    });
 
-        let x = graph.mul(a, b);
-        graph.add(c, x);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), 32, 32];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -40,10 +46,7 @@ fn mul_add_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), 32, 32];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
@@ -95,7 +98,7 @@ fn mul_add_forward_backward() {
 
 #[test]
 fn matmul_sub_softmax_forward_backward() {
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
     let k = meta.new_field();
@@ -104,19 +107,22 @@ fn matmul_sub_softmax_forward_backward() {
 
     let mut graph = Graph::new(CROSS_ENTROPY, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, k], SimpleDType::F32);
+        let b = input(&[k, n], SimpleDType::F32);
+        let c = input(&[m, n], SimpleDType::F32);
 
-        let a = graph.input(&[m, k], SimpleDType::F32);
-        let b = graph.input(&[k, n], SimpleDType::F32);
-        let c = graph.input(&[m, n], SimpleDType::F32);
+        let x = matmul(a, b);
+        let s = sub(c, x);
+        softmax(s);
+    });
 
-        let x = graph.matmul(a, b);
-        let s = graph.sub(c, x);
-        graph.softmax(s);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), 16, 64, 32];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -129,10 +135,7 @@ fn matmul_sub_softmax_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), 16, 64, 32];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
@@ -188,7 +191,7 @@ fn matmul_sub_softmax_forward_backward() {
 
 #[test]
 fn div_const_softmax_forward_backward() {
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
 
@@ -196,18 +199,21 @@ fn div_const_softmax_forward_backward() {
 
     let mut graph = Graph::new(CROSS_ENTROPY, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let x = input(&[m, n], SimpleDType::F32);
 
-        let x = graph.input(&[m, n], SimpleDType::F32);
+        let two = constant_f32(2.0);
+        let logits = div(two, x);
+        let soft = softmax(logits);
+        add(soft, two);
+    });
 
-        let two = graph.constant_f32(2.0);
-        let logits = graph.div(two, x);
-        let soft = graph.softmax(logits);
-        graph.add(soft, two);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), 16, 32];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -220,10 +226,7 @@ fn div_const_softmax_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), 16, 32];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
@@ -274,7 +277,7 @@ fn matmul_add_forward_backward() {
     const B_VAL: f32 = 2.0;
     const C_VAL: f32 = 1.0;
 
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
     let k = meta.new_field();
@@ -283,18 +286,21 @@ fn matmul_add_forward_backward() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, k], SimpleDType::F32);
+        let b = input(&[k, n], SimpleDType::F32);
+        let c = input(&[m, n], SimpleDType::F32);
 
-        let a = graph.input(&[m, k], SimpleDType::F32);
-        let b = graph.input(&[k, n], SimpleDType::F32);
-        let c = graph.input(&[m, n], SimpleDType::F32);
+        let x = matmul(a, b);
+        add(x, c);
+    });
 
-        let x = graph.matmul(a, b);
-        graph.add(x, c);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -307,10 +313,7 @@ fn matmul_add_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
@@ -394,7 +397,7 @@ fn matmul_chain3_forward_backward() {
     const B_GRAD: f32 = A_VAL * X_GRAD * M as f32;
     const A_GRAD: f32 = X_GRAD * B_VAL * N as f32;
 
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
     let k = meta.new_field();
@@ -404,22 +407,25 @@ fn matmul_chain3_forward_backward() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, k], SimpleDType::F32);
+        let b = input(&[k, n], SimpleDType::F32);
+        let c = input(&[h, m], SimpleDType::F32);
+        let d = input(&[n, h], SimpleDType::F32);
+        let e = input(&[h, h], SimpleDType::F32);
 
-        let a = graph.input(&[m, k], SimpleDType::F32);
-        let b = graph.input(&[k, n], SimpleDType::F32);
-        let c = graph.input(&[h, m], SimpleDType::F32);
-        let d = graph.input(&[n, h], SimpleDType::F32);
-        let e = graph.input(&[h, h], SimpleDType::F32);
+        let x = matmul(a, b);
+        let y = matmul(c, x);
+        let z = matmul(y, d);
+        add(z, e);
+    });
 
-        let x = graph.matmul(a, b);
-        let y = graph.matmul(c, x);
-        let z = graph.matmul(y, d);
-        graph.add(z, e);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), M, N, K, H];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -432,10 +438,7 @@ fn matmul_chain3_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K, H];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
@@ -539,7 +542,7 @@ fn matmul_sub_forward_backward() {
     const C_GRAD: f32 = -D_VAL * N as f32;
     const D_GRAD: f32 = -C_VAL * M as f32;
 
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
     let k = meta.new_field();
@@ -548,21 +551,24 @@ fn matmul_sub_forward_backward() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, k], SimpleDType::F32);
+        let b = input(&[k, n], SimpleDType::F32);
+        let c = input(&[m, k], SimpleDType::F32);
+        let d = input(&[k, n], SimpleDType::F32);
 
-        let a = graph.input(&[m, k], SimpleDType::F32);
-        let b = graph.input(&[k, n], SimpleDType::F32);
-        let c = graph.input(&[m, k], SimpleDType::F32);
-        let d = graph.input(&[k, n], SimpleDType::F32);
+        let x = matmul(a, b);
+        let y = matmul(c, d);
 
-        let x = graph.matmul(a, b);
-        let y = graph.matmul(c, d);
+        sub(x, y);
+    });
 
-        graph.sub(x, y);
-    }
+    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
+
+    graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
     let Ok(ctx) = GpuContext::new() else {
@@ -575,10 +581,7 @@ fn matmul_sub_forward_backward() {
         debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();

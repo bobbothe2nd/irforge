@@ -1,10 +1,10 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, Metadata,
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
         OptCompilationOptions, SimpleDType,
     },
     io::BpatHeader,
-    nn::{MEAN_SQUARED_ERROR, Optim},
+    nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
 };
 use rand_core::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -34,7 +34,7 @@ fn main() {
         .init()
         .unwrap();
 
-    let mut meta = Metadata::new();
+    let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
     let k = meta.new_field();
@@ -44,47 +44,47 @@ fn main() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, optim.lower);
 
-    {
-        let mut graph = graph.define_ops();
+    graph.define(|| {
+        let a = input(&[m, k], SimpleDType::F32);
+        let b = input(&[k, n], SimpleDType::F32);
+        let c = input(&[h, m], SimpleDType::F32);
+        let d = input(&[n, h], SimpleDType::F32);
+        let e = input(&[h, h], SimpleDType::F32);
 
-        let a = graph.input(&[m, k], SimpleDType::F32);
-        let b = graph.input(&[k, n], SimpleDType::F32);
-        let c = graph.input(&[h, m], SimpleDType::F32);
-        let d = graph.input(&[n, h], SimpleDType::F32);
-        let e = graph.input(&[h, h], SimpleDType::F32);
+        let x = matmul(a, b);
+        let y = matmul(c, x);
+        let z = matmul(y, d);
 
-        let x = graph.matmul(a, b);
-        let y = graph.matmul(c, x);
-        let z = graph.matmul(y, d);
+        let z_res = add(z, e);
 
-        let z_res = graph.add(z, e);
+        let p = matmul(z_res, e);
 
-        let p = graph.matmul(z_res, e);
+        let out = add(p, z_res);
 
-        let out = graph.add(p, z_res);
+        matmul(out, e);
+    });
 
-        graph.matmul(out, e);
-    }
+    let meta_binding = [LR.to_bits(), M, N, K, H];
+    let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
-    graph.validate(meta).unwrap();
 
-    let compile_start = Instant::now();
+    graph.topo_sort().unwrap();
+    graph.validate(meta).unwrap();
 
     let ctx = GpuContext::new().unwrap();
     let options = CompilationOptions {
         target: ctx.detect_target(),
         opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::PRETTY_PRINT_IR,
+        debug: DebugCompilationOptions::empty(),
     };
 
-    let meta_binding = [LR.to_bits(), M, N, K, H];
-    assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
-
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &optim.state)
         .unwrap();
+
+    let compile_start = Instant::now();
 
     let ir = graph.lower(meta, &options, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();

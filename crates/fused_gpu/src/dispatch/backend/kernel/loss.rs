@@ -25,7 +25,7 @@ pub fn lower_loss(graph: &Graph, meta: Metadata) -> Result<Kernel, Error> {
             iter_space: root_node.shape.clone(),
         },
         params: Vec::with_capacity(5),
-        meta: vec![false; meta.fields],
+        meta: vec![false; meta.fields].into_boxed_slice(),
     };
 
     if graph

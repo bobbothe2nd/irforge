@@ -1,5 +1,5 @@
-use irforge_nn::optim::{STOCHASTIC_GRADIENT_DESCENT, stochastic_gradient_descent_state};
 use fused_gpu::dispatch::backend::{OptimState, OptimType};
+use irforge_nn::optim::{STOCHASTIC_GRADIENT_DESCENT, stochastic_gradient_descent_state};
 
 pub struct Optim {
     pub state: OptimState,

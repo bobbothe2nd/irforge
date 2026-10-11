@@ -8,7 +8,9 @@ use crate::{
         backend::kernel::{
             Kernel, KernelGroup, KernelsChained, LinkedKernel, NodeInput, RawKernel, SaveIndicator,
         },
-    }, errors::{Error, ErrorKind, GraphErrorContext}, tensor::Block,
+    },
+    errors::{Error, ErrorKind, GraphErrorContext},
+    tensor::Block,
 };
 
 pub mod codegen;
@@ -48,7 +50,10 @@ impl GpuBufferBackend for () {
 
 impl GpuKernelBackend for () {
     fn block(&self) -> Block {
-        Block { dim3: [0; 3], calc_grid: None }
+        Block {
+            dim3: [0; 3],
+            calc_grid: None,
+        }
     }
 
     fn iteration_space(&self) -> &[MetaId] {
@@ -496,11 +501,11 @@ impl TryFrom<u8> for Axis {
 }
 
 #[derive(Debug, Clone)]
-pub struct Node<'a> {
-    pub op: GraphOp<'a>,
-    pub inputs: Vec<NodeId>,
+pub struct Node {
+    pub op: GraphOp,
+    pub inputs: Box<[NodeId]>,
     pub outputs: Vec<NodeId>,
-    pub shape: Vec<MetaId>,
+    pub shape: Box<[MetaId]>,
     pub dtype: SimpleDType,
 }
 
@@ -572,9 +577,15 @@ pub enum StateDim {
     GradRelative(u32),
 }
 
-#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Metadata {
     fields: MetaId,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Metadata {
@@ -610,7 +621,7 @@ impl Metadata {
     /// - instantiation must be the same length as compile time definition
     /// - all shape fields must be multiples of 16
     ///
-    /// If valid, return `true`. If any of the above criteria fail, return `false`.
+    /// If valid, return `true`. If any of the above criterion fail, return `false`.
     #[must_use]
     #[inline]
     pub fn validate_meta(&self, meta: &[u32]) -> bool {
@@ -660,7 +671,7 @@ impl PartialOrd for DispatchOptions {
 /// This treats lowering functions as unique identifiers, so don't reuse functions.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
-pub enum GraphOp<'a> {
+pub enum GraphOp {
     Input,
 
     ConstU32(u32),
@@ -677,10 +688,10 @@ pub enum GraphOp<'a> {
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
-                &'a Graph<'a>,
+                &Graph,
                 &[Option<ParamId>],
                 &[Option<ParamId>],
-                &mut LinkedKernel<'a>,
+                &mut LinkedKernel,
                 ValueId,
                 ValueId,
                 ValueId,
@@ -696,11 +707,11 @@ pub enum GraphOp<'a> {
             &mut Vec<NodeId>,
             Option<u8>,
             NodeId,
-            &'a Graph<'a>,
+            &Graph,
             ValueId,
             &[Option<ParamId>],
             &[Option<ParamId>],
-            &mut LinkedKernel<'a>,
+            &mut LinkedKernel,
             ValueId,
             ValueId,
             ValueId,
@@ -711,9 +722,9 @@ pub enum GraphOp<'a> {
             &mut bool,
             &CompilationOptions,
         ) -> Result<Vec<NodeId>, Error>,
-        display: fn(&[Vec<MetaId>]) -> String,
-        save: fn(NodeId, &Node<'_>, &Graph<'_>, &mut [SaveIndicator]),
-        valid_shape: fn(NodeId, &Node<'a>, &Graph<'a>, &mut Vec<Error<GraphErrorContext<'a>>>),
+        display: fn(&[Box<[MetaId]>]) -> String,
+        save: fn(NodeId, &Node, &Graph, &mut [SaveIndicator]),
+        valid_shape: fn(NodeId, &Node, &Graph, &mut Vec<Error<GraphErrorContext>>),
         arity: u8,
         need_dims: bool,
         stable_iter: bool,
@@ -724,7 +735,7 @@ pub enum GraphOp<'a> {
     },
 }
 
-impl PartialEq for GraphOp<'_> {
+impl PartialEq for GraphOp {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Input, Self::Input) => true,
@@ -737,7 +748,7 @@ impl PartialEq for GraphOp<'_> {
     }
 }
 
-impl GraphOp<'_> {
+impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_elementwise(&self) -> bool {
@@ -841,7 +852,7 @@ impl GraphOp<'_> {
 
     #[must_use]
     #[inline]
-    pub fn debug(&self, all_hand_sides: &[Vec<MetaId>]) -> String {
+    pub fn debug(&self, all_hand_sides: &[Box<[MetaId]>]) -> String {
         match self {
             Self::Custom { display, .. } => display(all_hand_sides),
             _ => String::new(),
@@ -937,7 +948,7 @@ fn check_metadata(graph: &Graph, meta: Metadata, errors: &mut Vec<Error<GraphErr
     }
 }
 
-fn check_shapes<'a>(graph: &Graph<'a>, errors: &mut Vec<Error<GraphErrorContext<'a>>>) {
+fn check_shapes(graph: &Graph, errors: &mut Vec<Error<GraphErrorContext>>) {
     for (node_id, node) in graph.nodes.iter().enumerate() {
         if node.shape.len() < 2 && !node.op.is_leaf() {
             errors.push(Error {
@@ -974,13 +985,13 @@ fn check_shapes<'a>(graph: &Graph<'a>, errors: &mut Vec<Error<GraphErrorContext<
 }
 
 #[derive(Debug)]
-pub struct Graph<'a> {
-    pub nodes: Vec<Node<'a>>,
+pub struct Graph {
+    pub nodes: Vec<Node>,
     pub(crate) loss: LossType,
     pub(crate) optim: OptimType,
 }
 
-impl<'a> Graph<'a> {
+impl Graph {
     #[must_use]
     #[inline]
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
@@ -1056,7 +1067,7 @@ impl<'a> Graph<'a> {
     /// # Errors
     ///
     /// Fails if the graph is structurally broken (e.g. containing loops).
-    pub fn topo_sort(&mut self) -> Result<(), Error<GraphErrorContext<'a>>> {
+    pub fn topo_sort(&mut self) -> Result<(), Error<GraphErrorContext>> {
         let n = self.nodes.len();
 
         let mut in_degree = vec![0usize; n];
@@ -1168,7 +1179,7 @@ impl<'a> Graph<'a> {
     ///
     /// It is recommended that you run this function on your graph at least in debug mode, or
     /// you could have panics in production code.
-    pub fn validate(&self, meta: Metadata) -> Result<(), Vec<Error<GraphErrorContext<'a>>>> {
+    pub fn validate(&self, meta: Metadata) -> Result<(), Vec<Error<GraphErrorContext>>> {
         let mut errors = Vec::new();
 
         check_acrylicity(self, &mut errors);
@@ -1212,15 +1223,15 @@ impl<'a> Graph<'a> {
     ///
     /// Fails if the graph has invalid operations.
     pub fn lower(
-        &'a self,
+        &self,
         meta: Metadata,
         options: &CompilationOptions,
         saved: &[SaveIndicator],
-    ) -> Result<KernelGroup<'a>, Error> {
+    ) -> Result<KernelGroup, Error> {
         KernelsChained::lower(self, meta, saved, options)
     }
 
-    pub fn push_node(&mut self, node: Node<'a>) -> NodeId {
+    pub fn push_node(&mut self, node: Node) -> NodeId {
         let id = self.nodes.len();
 
         for node_id in &node.inputs {
@@ -1233,14 +1244,16 @@ impl<'a> Graph<'a> {
         id
     }
 
-    fn add_node(
+    fn add_node<T: Into<Box<[usize]>>>(
         &mut self,
-        op: GraphOp<'a>,
-        inputs: Vec<NodeId>,
-        shape: Vec<MetaId>,
+        op: GraphOp,
+        inputs: T,
+        shape: T,
         dtype: SimpleDType,
     ) -> NodeId {
         let id = self.nodes.len();
+
+        let inputs = inputs.into();
 
         for node_id in &inputs {
             let node = &mut self.nodes[*node_id];
@@ -1251,7 +1264,7 @@ impl<'a> Graph<'a> {
             outputs: Vec::new(),
             op,
             inputs,
-            shape,
+            shape: shape.into(),
             dtype,
         });
 
@@ -1259,52 +1272,27 @@ impl<'a> Graph<'a> {
     }
 
     pub fn input(&mut self, shape: &[MetaId], dtype: SimpleDType) -> NodeId {
-        self.add_node(GraphOp::Input, Vec::new(), shape.to_vec(), dtype)
+        self.add_node::<&[usize]>(GraphOp::Input, &[], shape, dtype)
     }
 
     pub fn constant_f32(&mut self, data: f32) -> NodeId {
-        self.add_node(
-            GraphOp::ConstF32(data),
-            Vec::new(),
-            Vec::new(),
-            SimpleDType::F32,
-        )
+        self.add_node::<&[usize]>(GraphOp::ConstF32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_u32(&mut self, data: u32) -> NodeId {
-        self.add_node(
-            GraphOp::ConstU32(data),
-            Vec::new(),
-            Vec::new(),
-            SimpleDType::F32,
-        )
+        self.add_node::<&[usize]>(GraphOp::ConstU32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_i32(&mut self, data: i32) -> NodeId {
-        self.add_node(
-            GraphOp::ConstI32(data),
-            Vec::new(),
-            Vec::new(),
-            SimpleDType::F32,
-        )
+        self.add_node::<&[usize]>(GraphOp::ConstI32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_f16(&mut self, data: f16) -> NodeId {
-        self.add_node(
-            GraphOp::ConstF16(data),
-            Vec::new(),
-            Vec::new(),
-            SimpleDType::F32,
-        )
+        self.add_node::<&[usize]>(GraphOp::ConstF16(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_bf16(&mut self, data: bf16) -> NodeId {
-        self.add_node(
-            GraphOp::ConstBf16(data),
-            Vec::new(),
-            Vec::new(),
-            SimpleDType::F32,
-        )
+        self.add_node::<&[usize]>(GraphOp::ConstBf16(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn repeat<I>(&mut self, count: usize, mut start: I, structure: fn(&mut Self, I) -> I) {
