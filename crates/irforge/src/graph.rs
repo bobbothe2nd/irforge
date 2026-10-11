@@ -24,17 +24,27 @@ impl Index<NodeId> for Graph {
     type Output = Node;
 
     fn index(&self, index: NodeId) -> &Self::Output {
-        &self.0.as_ref().expect("graph already borrowed").nodes[index.0]
+        &self.inner().nodes[index.0]
     }
 }
 
 impl IndexMut<NodeId> for Graph {
     fn index_mut(&mut self, index: NodeId) -> &mut Self::Output {
-        &mut self.0.as_mut().expect("graph already borrowed").nodes[index.0]
+        &mut self.inner_mut().nodes[index.0]
     }
 }
 
 impl Graph {
+    #[inline]
+    fn inner(&self) -> &InnerGraph {
+        self.0.as_ref().expect("graph already borrowed")
+    }
+
+    #[inline]
+    fn inner_mut(&mut self) -> &mut InnerGraph {
+        self.0.as_mut().expect("graph already borrowed")
+    }
+
     #[inline]
     #[must_use]
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
@@ -44,73 +54,46 @@ impl Graph {
     #[inline]
     #[must_use]
     pub fn get_adjacent(&self, node: NodeId, user: NodeId) -> Vec<NodeId> {
-        cast_vec(
-            self.0
-                .as_ref()
-                .expect("graph already borrowed")
-                .get_adjacent(node.0, user.0),
-        )
+        cast_vec(self.inner().get_adjacent(node.0, user.0))
     }
 
     #[inline]
     pub fn get_edge(&self, node: NodeId, user: NodeId) -> Option<EdgeId> {
-        Some(EdgeId(
-            self.0
-                .as_ref()
-                .expect("graph already borrowed")
-                .get_edge(node.0, user.0)?,
-        ))
+        Some(EdgeId(self.inner().get_edge(node.0, user.0)?))
     }
 
     #[inline]
     #[must_use]
     pub fn is_edge(&self, node: NodeId, user: NodeId, edge: EdgeId) -> bool {
-        self.0
-            .as_ref()
-            .expect("graph already borrowed")
-            .is_edge(node.0, user.0, edge.0)
+        self.inner().is_edge(node.0, user.0, edge.0)
     }
 
     #[inline]
     #[must_use]
     pub fn is_lhs_edge(&self, node: NodeId, user: NodeId) -> bool {
-        self.0
-            .as_ref()
-            .expect("graph already borrowed")
-            .is_lhs_edge(node.0, user.0)
+        self.inner().is_lhs_edge(node.0, user.0)
     }
 
     #[inline]
     #[must_use]
     pub fn is_rhs_edge(&self, node: NodeId, user: NodeId) -> bool {
-        self.0
-            .as_ref()
-            .expect("graph already borrowed")
-            .is_rhs_edge(node.0, user.0)
+        self.inner().is_rhs_edge(node.0, user.0)
     }
 
     #[inline]
     #[must_use]
     pub fn compute_saved_nodes(&self) -> SavedNodes {
-        SavedNodes(
-            self.0
-                .as_ref()
-                .expect("graph already borrowed")
-                .compute_saved_nodes(),
-        )
+        SavedNodes(self.inner().compute_saved_nodes())
     }
 
     #[inline]
     pub fn topo_sort(&mut self) -> Result<(), Error<GraphErrorContext>> {
-        self.0.as_mut().expect("graph already borrowed").topo_sort()
+        self.inner_mut().topo_sort()
     }
 
     #[inline]
     pub fn validate(&self, meta: Metadata) -> Result<(), Vec<Error<GraphErrorContext>>> {
-        self.0
-            .as_ref()
-            .expect("graph already borrowed")
-            .validate(meta.0)
+        self.inner().validate(meta.0)
     }
 
     #[inline]
@@ -120,14 +103,9 @@ impl Graph {
         options: &CompilationOptions,
         saved: &SavedNodes,
     ) -> Result<KernelGroup, Error<GraphErrorContext>> {
-        self.0
-            .as_mut()
-            .expect("graph already borrowed")
-            .rebuild_outputs();
+        self.inner_mut().rebuild_outputs();
 
-        self.0
-            .as_ref()
-            .expect("graph already borrowed")
+        self.inner()
             .lower(meta.0, options, &saved.0)
             .map_err(move |e| e.into())
     }
@@ -156,13 +134,12 @@ impl Graph {
             graph: graph.clone(),
         });
 
-        let previous = CURRENT_GRAPH.with(|current| {
-            current.replace(Some(ops))
-        });
+        let previous = CURRENT_GRAPH.with(|current| current.replace(Some(ops)));
 
-        let _guard = DefineGuard { previous };
-
-        let res = f();
+        let res = {
+            let _guard = DefineGuard { previous };
+            f()
+        };
 
         let graph = Rc::try_unwrap(graph)
             .expect("graph still referenced")

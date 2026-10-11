@@ -29,10 +29,7 @@ fn main() {
     const D_VAL: f32 = 0.007;
     const E_VAL: f32 = 0.008;
 
-    stderrlog::new()
-        .verbosity(log::Level::Debug)
-        .init()
-        .unwrap();
+    stderrlog::new().verbosity(log::Level::Info).init().unwrap();
 
     let mut meta = MetaBuilder::new();
     let m = meta.new_field();
