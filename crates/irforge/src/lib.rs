@@ -68,8 +68,8 @@ pub mod io {
 
 pub mod nn {
     pub use crate::optim::Optim;
-    pub use ferrograd_nn::loss::*;
-    pub use ferrograd_nn::op::*;
+    pub use irforge_nn::loss::*;
+    pub use irforge_nn::op::*;
 }
 
 pub mod codegen {

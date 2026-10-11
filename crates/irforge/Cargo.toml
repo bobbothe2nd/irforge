@@ -1,10 +1,10 @@
 [package]
-name = "ferrograd"
+name = "irforge"
 version = "0.1.0-rc.1"
 edition = "2024"
 rust-version = "1.89"
-documentation = "https://docs.rs/ferrograd"
-repository = "https://github.com/bobbothe2nd/ferrograd"
+documentation = "https://docs.rs/irforge"
+repository = "https://github.com/bobbothe2nd/irforge"
 readme = "README.md"
 description = "GPU graph compilation to fuse linear tensor operations"
 license = "MIT"
@@ -18,7 +18,7 @@ rocm = ["fused_gpu/rocm"]
 wgsl = ["fused_gpu/wgsl"]
 
 [dependencies]
-ferrograd-nn = { path = "../ferrograd-nn", version = "0.1.0-rc.1" }
+irforge-nn = { path = "../irforge-nn", version = "0.1.0-rc.1" }
 fused_gpu = { path = "../fused_gpu", version = "0.1.0-rc.1", features = ["io", "telemetry"] }
 briny = "0.13.0"
 

@@ -1,4 +1,4 @@
-use ferrograd_nn::optim::{STOCHASTIC_GRADIENT_DESCENT, stochastic_gradient_descent_state};
+use irforge_nn::optim::{STOCHASTIC_GRADIENT_DESCENT, stochastic_gradient_descent_state};
 use fused_gpu::dispatch::backend::{OptimState, OptimType};
 
 pub struct Optim {

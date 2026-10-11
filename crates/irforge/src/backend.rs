@@ -8,20 +8,17 @@ use fused_gpu::{
             NodeId, NopGpuContext,
             kernel::{Dependencies, RawKernel, Redirect, SaveIndicator},
         },
-    },
-    errors::Error,
-    io::{BpatHeader, SerialTensorError},
-    tensor::{Tensor, ToBuffer, bf16, f16},
+    }, errors::Error, io::{BpatHeader, SerialTensorError}, tensor::{Block, Tensor, ToBuffer, bf16, f16},
 };
 
 use core::ops::{Deref, DerefMut};
 use std::path::Path;
 
 #[cfg(feature = "wgsl")]
-use fused_gpu::dispatch::backend::wgsl;
+use dispatch::backend::wgsl;
 
 #[cfg(feature = "rocm")]
-use fused_gpu::dispatch::backend::rocm;
+use dispatch::backend::rocm;
 
 use crate::{
     dispatch::{
@@ -617,7 +614,7 @@ impl_backend!(DynKernel, Unit, GpuKernel, Kernel,);
 impl GpuKernelBackend for DynKernel {
     impl_op! {
         iteration_space(&self,) -> &[dispatch::backend::MetaId]
-        block(&self,) -> &[u32; 3]
+        block(&self,) -> Block
     }
 }
 

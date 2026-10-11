@@ -8,8 +8,7 @@ use crate::{
         backend::kernel::{
             Kernel, KernelGroup, KernelsChained, LinkedKernel, NodeInput, RawKernel, SaveIndicator,
         },
-    },
-    errors::{Error, ErrorKind, GraphErrorContext},
+    }, errors::{Error, ErrorKind, GraphErrorContext}, tensor::Block,
 };
 
 pub mod codegen;
@@ -48,8 +47,8 @@ impl GpuBufferBackend for () {
 }
 
 impl GpuKernelBackend for () {
-    fn block(&self) -> &[u32; 3] {
-        &[0, 0, 0]
+    fn block(&self) -> Block {
+        Block { dim3: [0; 3], calc_grid: None }
     }
 
     fn iteration_space(&self) -> &[MetaId] {

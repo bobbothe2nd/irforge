@@ -1,5 +1,5 @@
 [package]
-name = "ferrograd-nn"
+name = "irforge-nn"
 version = "0.1.0-rc.1"
 edition = "2024"
 rust-version = "1.89"

@@ -6,9 +6,7 @@ use crate::{
             MetaId, NodeId, Param,
             kernel::{Dependencies, RawKernel, Redirect, remap::eval_dependency_order},
         },
-    },
-    errors::{Error, ErrorKind},
-    tensor::{ToBuffer, build_dims, calc_grid},
+    }, errors::{Error, ErrorKind}, tensor::{Block, ToBuffer, build_dims},
 };
 use briny::raw::cast::cast_slice;
 use std::vec::Vec;
@@ -125,7 +123,7 @@ impl GpuContext {
 pub struct GpuKernel {
     kernel: ComputePipeline,
     iter_space: Vec<MetaId>,
-    block: [u32; 3],
+    block: Block,
 }
 
 impl GpuKernelBackend for GpuKernel {
@@ -133,8 +131,8 @@ impl GpuKernelBackend for GpuKernel {
         &self.iter_space
     }
 
-    fn block(&self) -> &[u32; 3] {
-        &self.block
+    fn block(&self) -> Block {
+        self.block
     }
 }
 
@@ -349,7 +347,7 @@ impl GpuBackend for GpuContext {
                     cache: None,
                 }),
             iter_space: src.iter_space.clone(),
-            block: src.block.dim3,
+            block: src.block,
         })
     }
 
@@ -363,7 +361,7 @@ impl GpuBackend for GpuContext {
         let mut scheduled_kernels = Vec::new();
 
         let iter_space = build_dims(kernel.iteration_space(), meta);
-        let grid = calc_grid(&iter_space, *kernel.block());
+        let grid = kernel.block.calc_grid(&iter_space);
 
         let kernel = &kernel.kernel;
 
@@ -409,7 +407,7 @@ impl GpuBackend for GpuContext {
 
         eval_dependency_order(&kernels, |kernel, _, params| {
             let iter_space = build_dims(kernel.iteration_space(), meta);
-            let grid = calc_grid(&iter_space, *kernel.block());
+            let grid = kernel.block.calc_grid(&iter_space);
 
             let mut kernel_bindings = Vec::with_capacity(1 + bindings.len());
 

@@ -32,9 +32,7 @@ use crate::{
             kernel::{Dependencies, RawKernel, Redirect, remap::eval_dependency_order},
             rocm::generate::generate_hip,
         },
-    },
-    errors::{Error, ErrorKind},
-    tensor::{build_dims, calc_grid},
+    }, errors::{Error, ErrorKind}, tensor::{Block, build_dims},
 };
 
 pub mod generate;
@@ -163,7 +161,7 @@ impl GpuBackend for GpuContext {
         )?;
 
         Ok(Kernel {
-            block: src.block.dim3,
+            block: src.block,
             iter_space: src.iter_space.clone().into_boxed_slice(),
             func,
         })
@@ -232,7 +230,7 @@ impl GpuBackend for GpuContext {
                     &mut boxed,
                     LaunchConfig {
                         grid,
-                        block: kernel.block,
+                        block: kernel.block.dim3,
                     }
                 ),
                 "failed to launch kernel"
@@ -278,7 +276,7 @@ impl GpuBackend for GpuContext {
         )?;
 
         let iter_space = build_dims(kernel.iteration_space(), meta);
-        let grid = calc_grid(&iter_space, *kernel.block());
+        let grid = kernel.block.calc_grid(&iter_space);
 
         for bindings in bindings {
             let mut kernel_bindings = Vec::with_capacity(1 + bindings.len());
@@ -296,7 +294,7 @@ impl GpuBackend for GpuContext {
                         &mut kernel_bindings,
                         LaunchConfig {
                             grid,
-                            block: kernel.block,
+                            block: kernel.block.dim3,
                         }
                     ),
                     "failed to launch kernel"
@@ -335,7 +333,7 @@ impl GpuBackend for GpuContext {
 
         eval_dependency_order(&kernels, |kernel, _, params| {
             let iter_space = build_dims(kernel.iteration_space(), meta);
-            let grid = calc_grid(&iter_space, *kernel.block());
+            let grid = kernel.block.calc_grid(&iter_space);
 
             let mut kernel_args = Vec::with_capacity(1 + bindings.len());
 
@@ -352,7 +350,7 @@ impl GpuBackend for GpuContext {
                         &mut kernel_args,
                         LaunchConfig {
                             grid,
-                            block: kernel.block,
+                            block: kernel.block.dim3,
                         }
                     ),
                     "failed to launch kernel"
@@ -450,14 +448,14 @@ impl GpuBufferBackend for Buffer {
 
 #[derive(Clone)]
 pub struct Kernel {
-    block: [u32; 3],
+    block: Block,
     iter_space: Box<[MetaId]>,
     func: Func,
 }
 
 impl GpuKernelBackend for Kernel {
-    fn block(&self) -> &[u32; 3] {
-        &self.block
+    fn block(&self) -> Block {
+        self.block
     }
 
     fn iteration_space(&self) -> &[MetaId] {

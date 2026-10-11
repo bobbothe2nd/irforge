@@ -1,3 +1,4 @@
 /target
 /Cargo.lock
 /mma_test.cu
+/ir.intra

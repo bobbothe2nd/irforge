@@ -4,9 +4,7 @@ use crate::{
     dispatch::backend::{
         Graph, MetaId, NodeId, OptimState, Param, StateDim,
         kernel::{Dependencies, RawKernel, Redirect, SaveIndicator},
-    },
-    errors::Error,
-    tensor::{Tensor, ToBuffer, build_dims},
+    }, errors::Error, tensor::{Block, Tensor, ToBuffer, build_dims},
 };
 use briny::{
     raw::{
@@ -152,7 +150,7 @@ pub trait GpuBufferBackend {
 
 pub trait GpuKernelBackend {
     fn iteration_space(&self) -> &[MetaId];
-    fn block(&self) -> &[u32; 3];
+    fn block(&self) -> Block;
 }
 
 /// Core GPU backend trait, defining a context which uses the GPU
@@ -708,7 +706,7 @@ impl<B: GpuBackend> GpuContext<B> {
             self.inner
                 .schedule(kernels.backward, &bindings, meta, &alloc_tensors.meta)?;
 
-        let grid = alloc_tensors.loss_t.calc_grid(*kernels.loss.block());
+        let grid = kernels.loss.block().calc_grid(&alloc_tensors.loss_t.shape);
 
         let bindings = [
             &alloc_tensors.loss_t.data.inner,
@@ -798,7 +796,7 @@ impl<B: GpuBackend> GpuContext<B> {
         grad: usize,
         tensors: &AllocTensors<B>,
     ) -> Result<(), Error> {
-        let grid = weight.calc_grid(*schedule.optim.kernel.block());
+        let grid = schedule.optim.kernel.block().calc_grid(&weight.shape);
 
         let mut bindings = schedule.optim.bindings.clone();
 

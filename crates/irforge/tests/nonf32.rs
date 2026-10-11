@@ -1,4 +1,4 @@
-use ferrograd::{
+use irforge::{
     dispatch::{
         CompilationOptions, DebugCompilationOptions, GpuContext, Graph, Metadata,
         OptCompilationOptions, SimpleDType,
@@ -45,7 +45,7 @@ fn mul_add_f16() {
     assert!(meta.validate_meta(&meta_binding));
     let meta_binding = ctx.alloc_meta(&meta_binding);
 
-    let saved_tensors: fused_gpu::dispatch::AllocTensors<ferrograd::dispatch::backend::Dynamic> =
+    let saved_tensors =
         ctx.alloc_tensors(&graph, &saved, meta_binding, &state)
             .unwrap();
 

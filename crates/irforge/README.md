@@ -1,11 +1,11 @@
-# `ferrograd`
+# `irforge`
 
 Advanced graph-based GPU compiler for linear algebra and AI/ML/DL.
 
 ## Usage
 
 ```rust
-use ferrograd::{
+use irforge::{
     dispatch::{
         CompilationOptions, SimpleDType, DebugCompilationOptions, GpuContext, Graph, Metadata,
         OptCompilationOptions,
@@ -157,4 +157,4 @@ ctx.save_tensors("data/v2f32_readme.bpat", &in_tensors, BpatHeader::BpatV2f32)
 
 ## Custom Operations
 
-Implementing your own operations is more advanced than in other crates. Examples of such can be found in the source code of `ferrograd-nn` or the README of `fused_gpu`.
+Implementing your own operations is more advanced than in other crates. Examples of such can be found in the source code of `irforge-nn` or the README of `fused_gpu`.

@@ -25,7 +25,7 @@ pub fn build_dims(shape: &[MetaId], meta: &[u32]) -> Vec<u32> {
 
 #[inline]
 #[must_use]
-pub fn calc_grid(shape: &[u32], block: [u32; 3]) -> [u32; 3] {
+pub fn calc_grid_raw(shape: &[u32], block: [u32; 3]) -> [u32; 3] {
     let out_rank = shape.len();
 
     if block[0] == block[1] {
@@ -103,7 +103,7 @@ impl Block {
     #[must_use]
     pub fn calc_grid(&self, shape: &[u32]) -> [u32; 3] {
         self.calc_grid.map_or_else(
-            || calc_grid(shape, self.dim3),
+            || calc_grid_raw(shape, self.dim3),
             |calc_grid| (calc_grid)(shape, self.dim3),
         )
     }
@@ -148,15 +148,6 @@ impl<B: GpuBackend> PartialEq for Tensor<B> {
 impl<B: GpuBackend> Eq for Tensor<B> {}
 
 impl<B: GpuBackend> Tensor<B> {
-    /// Calculates the required grid provided the block size of the kernel.
-    ///
-    /// Divides the last two dimensions
-    #[inline]
-    #[must_use]
-    pub fn calc_grid(&self, block: [u32; 3]) -> [u32; 3] {
-        calc_grid(&self.shape, block)
-    }
-
     /// Returns the rank (length of shape) of the tensor.
     ///
     /// To get the full shape, use [`Tensor::dims`].

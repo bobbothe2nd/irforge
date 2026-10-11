@@ -1,4 +1,4 @@
-use ferrograd::{
+use irforge::{
     dispatch::{
         CompilationOptions, DebugCompilationOptions, GpuContext, Graph, Metadata,
         OptCompilationOptions, Schedule, SimpleDType,

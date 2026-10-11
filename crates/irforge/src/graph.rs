@@ -136,7 +136,7 @@ impl DefineOps<'_, '_> {
 macro_rules! impl_op {
     ($op:ident, $($node:ident),*) => {
         pub fn $op(&mut self, $($node: NodeId),*) -> NodeId {
-            NodeId(ferrograd_nn::op::$op(&mut self.graph.0, $($node.0),*))
+            NodeId(irforge_nn::op::$op(&mut self.graph.0, $($node.0),*))
         }
     };
 }
