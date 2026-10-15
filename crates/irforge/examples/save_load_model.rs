@@ -8,7 +8,7 @@ use irforge::{
 };
 use rand_core::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::{io::Write, time::Instant};
+use std::time::Instant;
 
 const PATH: &str = "data/v2f32_test.bpat";
 
@@ -41,6 +41,10 @@ fn main() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, optim.lower);
 
+    let ctx = GpuContext::new().unwrap();
+    let target = ctx.detect_target();
+
+    graph.set_target(target);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -69,9 +73,8 @@ fn main() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let ctx = GpuContext::new().unwrap();
     let options = CompilationOptions {
-        target: ctx.detect_target(),
+        target: graph.get_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -159,19 +162,16 @@ fn main() {
 
         if epoch % EPOCHS_TO_SAVE == EPOCHS_TO_SAVE - 1 {
             print!(" saving...");
-            std::io::stdout().flush().unwrap();
             ctx.save_tensors(PATH, &in_tensors, BpatHeader::BpatV2f32)
                 .unwrap();
 
             print!("\r calculating loss...");
-            std::io::stdout().flush().unwrap();
             let mut loss_t = Box::<[f32]>::new_uninit_slice((H * H) as usize);
             ctx.download(&saved_tensors.loss_t, &mut loss_t, 0).unwrap();
             let loss_t = unsafe { loss_t.assume_init() };
             let loss = loss_t.iter().sum::<f32>() / (H * H) as f32;
 
             print!("\r syncing...         ");
-            std::io::stdout().flush().unwrap();
             ctx.sync().unwrap();
 
             println!("\r saved model @ loss {loss:?}");

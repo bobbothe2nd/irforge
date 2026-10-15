@@ -987,6 +987,7 @@ fn check_shapes(graph: &Graph, errors: &mut Vec<Error<GraphErrorContext>>) {
 #[derive(Debug)]
 pub struct Graph {
     pub nodes: Vec<Node>,
+    pub target: TargetCompilationOptions,
     pub(crate) loss: LossType,
     pub(crate) optim: OptimType,
 }
@@ -997,6 +998,9 @@ impl Graph {
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
         Self {
             nodes: Vec::new(),
+            target: TargetCompilationOptions {
+                flags: TargetFlags::empty(),
+            },
             loss,
             optim,
         }

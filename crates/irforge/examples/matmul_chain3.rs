@@ -65,6 +65,10 @@ fn main() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, optim.lower);
 
+    let ctx = GpuContext::new().unwrap();
+    let target = ctx.detect_target();
+
+    graph.set_target(target);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -86,9 +90,8 @@ fn main() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let ctx = GpuContext::new().unwrap();
     let options = CompilationOptions {
-        target: ctx.detect_target(),
+        target: graph.get_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

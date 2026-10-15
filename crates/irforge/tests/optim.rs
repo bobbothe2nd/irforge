@@ -16,6 +16,12 @@ fn mul_add_optim() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
+    let Ok(ctx) = GpuContext::new() else {
+        return;
+    };
+    let target = ctx.detect_target();
+
+    graph.set_target(target);
     graph.define(|| {
         let a = input(&[m, n], SimpleDType::F32);
         let b = input(&[m, n], SimpleDType::F32);
@@ -33,11 +39,8 @@ fn mul_add_optim() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let Ok(ctx) = GpuContext::new() else {
-        return;
-    };
     let options = CompilationOptions {
-        target: ctx.detect_target(),
+        target: graph.get_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -112,6 +115,12 @@ fn mul_add_separate_optim() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
+    let Ok(ctx) = GpuContext::new() else {
+        return;
+    };
+    let target = ctx.detect_target();
+
+    graph.set_target(target);
     graph.define(|| {
         let a = input(&[m, n], SimpleDType::F32);
         let b = input(&[m, n], SimpleDType::F32);
@@ -129,11 +138,8 @@ fn mul_add_separate_optim() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let Ok(ctx) = GpuContext::new() else {
-        return;
-    };
     let options = CompilationOptions {
-        target: ctx.detect_target(),
+        target: graph.get_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

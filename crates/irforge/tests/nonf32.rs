@@ -17,6 +17,12 @@ fn mul_add_f16() {
 
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, Optim::sgd().lower);
 
+    let Ok(ctx) = GpuContext::new() else {
+        return;
+    };
+    let target = ctx.detect_target();
+
+    graph.set_target(target);
     graph.define(|| {
         let a = input(&[m, n], SimpleDType::F16);
         let b = input(&[m, n], SimpleDType::F16);
@@ -34,11 +40,8 @@ fn mul_add_f16() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let Ok(ctx) = GpuContext::new() else {
-        return;
-    };
     let options = CompilationOptions {
-        target: ctx.detect_target(),
+        target: graph.get_target(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

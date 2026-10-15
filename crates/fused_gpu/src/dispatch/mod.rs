@@ -36,7 +36,7 @@ pub struct CompilationOptions {
     pub opt: OptCompilationOptions,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct TargetCompilationOptions {
     pub flags: TargetFlags,
 }

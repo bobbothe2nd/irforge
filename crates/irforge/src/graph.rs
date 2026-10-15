@@ -11,8 +11,7 @@ use core::{
     ops::{Index, IndexMut},
 };
 use fused_gpu::{
-    dispatch::backend::Graph as InnerGraph,
-    errors::{Error, GraphErrorContext},
+    dispatch::{TargetCompilationOptions, backend::Graph as InnerGraph}, errors::{Error, GraphErrorContext},
 };
 use std::rc::Rc;
 
@@ -49,6 +48,16 @@ impl Graph {
     #[must_use]
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
         Self(Some(InnerGraph::new(loss, optim)))
+    }
+
+    #[inline]
+    pub fn set_target(&mut self, target: TargetCompilationOptions) {
+        self.inner_mut().target = target;
+    }
+
+    #[inline]
+    pub fn get_target(&self) -> TargetCompilationOptions {
+        self.inner().target
     }
 
     #[inline]

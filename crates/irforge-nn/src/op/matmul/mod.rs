@@ -14,184 +14,186 @@ use std::{format, vec, vec::Vec};
 mod generic;
 mod wmma;
 
-pub fn lower_matmul_recursive(
-    eval_node: impl Fn(
-        NodeId,
-        NodeId,
-        &NodeInput,
-        ValueId,
-        &mut Vec<NodeId>,
-        &Graph,
-        &[Option<ParamId>],
-        &[Option<ParamId>],
-        &mut LinkedKernel,
-        ValueId,
-        ValueId,
-        ValueId,
-        ValueId,
-        u32,
-        ValueId,
-        &[Param],
-        &mut bool,
-        &CompilationOptions,
-    ) -> Result<Vec<NodeId>, Error>,
-    root: NodeId,
-    input: NodeId,
-    resolved: &mut Vec<NodeId>,
-    backwardness: Option<u8>,
-    node_id: NodeId,
-    graph: &Graph,
-    out: ValueId,
-    node_params: &[Option<ParamId>],
-    saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel,
-    base: ValueId,
-    _idx: ValueId,
-    local_row: ValueId,
-    local_col: ValueId,
-    shared_size: u32,
-    tile_size: ValueId,
-    params: &[Param],
-    stable_iteration_space: &mut bool,
-    options: &CompilationOptions,
-) -> Result<Vec<NodeId>, Error> {
-    *stable_iteration_space = false;
+macro_rules! impl_lower {
+    ($name:ident $inner:ident) => {
+        pub fn $name(
+            eval_node: impl Fn(
+                NodeId,
+                NodeId,
+                &NodeInput,
+                ValueId,
+                &mut Vec<NodeId>,
+                &Graph,
+                &[Option<ParamId>],
+                &[Option<ParamId>],
+                &mut LinkedKernel,
+                ValueId,
+                ValueId,
+                ValueId,
+                ValueId,
+                u32,
+                ValueId,
+                &[Param],
+                &mut bool,
+                &CompilationOptions,
+            ) -> Result<Vec<NodeId>, Error>,
+            root: NodeId,
+            input: NodeId,
+            resolved: &mut Vec<NodeId>,
+            backwardness: Option<u8>,
+            node_id: NodeId,
+            graph: &Graph,
+            out: ValueId,
+            node_params: &[Option<ParamId>],
+            saved_params: &[Option<ParamId>],
+            kernel: &mut LinkedKernel,
+            base: ValueId,
+            _idx: ValueId,
+            local_row: ValueId,
+            local_col: ValueId,
+            shared_size: u32,
+            tile_size: ValueId,
+            params: &[Param],
+            stable_iteration_space: &mut bool,
+            options: &CompilationOptions,
+        ) -> Result<Vec<NodeId>, Error> {
+            *stable_iteration_space = false;
 
-    let row = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Immut,
-        Some(Op::GlobalId { axis: Axis::Y }),
-    );
-    let col = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Immut,
-        Some(Op::GlobalId { axis: Axis::X }),
-    );
+            let row = kernel.raw.def_var(
+                DType::Simple(SimpleDType::U32),
+                ValueState::Immut,
+                Some(Op::GlobalId { axis: Axis::Y }),
+            );
+            let col = kernel.raw.def_var(
+                DType::Simple(SimpleDType::U32),
+                ValueState::Immut,
+                Some(Op::GlobalId { axis: Axis::X }),
+            );
 
-    let node = &graph.nodes[node_id];
+            let node = &graph.nodes[node_id];
 
-    let (a_node, b_node);
+            let (a_node, b_node);
 
-    if backwardness == Some(0) {
-        let param = saved_params[node.inputs[1]].ok_or(Error {
-            msg: "saved input parameter could not be materialized",
-            kind: ErrorKind::ParamNotMaterialized,
-            ctx: (),
-        })?;
-        let shape = graph.nodes[node.inputs[1]].shape.clone();
+            if backwardness == Some(0) {
+                let param = saved_params[node.inputs[1]].ok_or(Error {
+                    msg: "saved input parameter could not be materialized",
+                    kind: ErrorKind::ParamNotMaterialized,
+                    ctx: (),
+                })?;
+                let shape = graph.nodes[node.inputs[1]].shape.clone();
 
-        a_node = NodeInput::Node(node_id);
-        b_node = NodeInput::Param { param, shape };
-    } else if backwardness == Some(1) {
-        let param = saved_params[node.inputs[0]].ok_or(Error {
-            msg: "saved input parameter could not be materialized",
-            kind: ErrorKind::ParamNotMaterialized,
-            ctx: (),
-        })?;
-        let shape = graph.nodes[node.inputs[0]].shape.clone();
+                a_node = NodeInput::Node(node_id);
+                b_node = NodeInput::Param { param, shape };
+            } else if backwardness == Some(1) {
+                let param = saved_params[node.inputs[0]].ok_or(Error {
+                    msg: "saved input parameter could not be materialized",
+                    kind: ErrorKind::ParamNotMaterialized,
+                    ctx: (),
+                })?;
+                let shape = graph.nodes[node.inputs[0]].shape.clone();
 
-        a_node = NodeInput::Param { param, shape };
-        b_node = NodeInput::Node(node_id);
-    } else {
-        a_node = NodeInput::Node(node.inputs[0]);
-        b_node = NodeInput::Node(node.inputs[1]);
-    }
+                a_node = NodeInput::Param { param, shape };
+                b_node = NodeInput::Node(node_id);
+            } else {
+                a_node = NodeInput::Node(node.inputs[0]);
+                b_node = NodeInput::Node(node.inputs[1]);
+            }
 
-    let transpose_a = backwardness == Some(1);
-    let transpose_b = backwardness == Some(0);
+            let transpose_a = backwardness == Some(1);
+            let transpose_b = backwardness == Some(0);
 
-    let mut a_node_shape = match a_node {
-        NodeInput::Node(node) => graph.nodes[node].shape.clone(),
-        NodeInput::Param {
-            param: _,
-            ref shape,
-        } => shape.clone(),
+            let mut a_node_shape = match a_node {
+                NodeInput::Node(node) => graph.nodes[node].shape.clone(),
+                NodeInput::Param {
+                    param: _,
+                    ref shape,
+                } => shape.clone(),
+            };
+
+            if transpose_a {
+                let len = a_node_shape.len();
+                a_node_shape.swap(len - 1, len - 2);
+            }
+
+            let mut b_node_shape = match b_node {
+                NodeInput::Node(node) => graph.nodes[node].shape.clone(),
+                NodeInput::Param {
+                    param: _,
+                    ref shape,
+                } => shape.clone(),
+            };
+
+            if transpose_b {
+                let len = b_node_shape.len();
+                b_node_shape.swap(len - 1, len - 2);
+            }
+
+            let m = a_node_shape[a_node_shape.len() - 2];
+            let n = b_node_shape[b_node_shape.len() - 1];
+            let k = a_node_shape[a_node_shape.len() - 1];
+
+            kernel.register_meta(m);
+            kernel.register_meta(n);
+            kernel.register_meta(k);
+
+            let m = kernel.raw.def_var(
+                DType::Simple(SimpleDType::U32),
+                ValueState::Immut,
+                Some(Op::ReadMeta { param: 0, field: m }),
+            );
+            let n = kernel.raw.def_var(
+                DType::Simple(SimpleDType::U32),
+                ValueState::Immut,
+                Some(Op::ReadMeta { param: 0, field: n }),
+            );
+            let k = kernel.raw.def_var(
+                DType::Simple(SimpleDType::U32),
+                ValueState::Immut,
+                Some(Op::ReadMeta { param: 0, field: k }),
+            );
+
+            if backwardness.is_none() {
+                kernel
+                    .raw
+                    .overwrite_var(out, node.dtype.constant_float(0.0)?);
+            }
+
+            $inner::forward_matmul(
+                eval_node,
+                node.dtype,
+                root,
+                input,
+                resolved,
+                m,
+                n,
+                k,
+                transpose_a,
+                transpose_b,
+                &a_node,
+                &b_node,
+                graph,
+                out,
+                node_params,
+                saved_params,
+                kernel,
+                base,
+                row,
+                col,
+                local_row,
+                local_col,
+                shared_size,
+                tile_size,
+                params,
+                stable_iteration_space,
+                options,
+            )
+        }
     };
-
-    if transpose_a {
-        let len = a_node_shape.len();
-        a_node_shape.swap(len - 1, len - 2);
-    }
-
-    let mut b_node_shape = match b_node {
-        NodeInput::Node(node) => graph.nodes[node].shape.clone(),
-        NodeInput::Param {
-            param: _,
-            ref shape,
-        } => shape.clone(),
-    };
-
-    if transpose_b {
-        let len = b_node_shape.len();
-        b_node_shape.swap(len - 1, len - 2);
-    }
-
-    let m = a_node_shape[a_node_shape.len() - 2];
-    let n = b_node_shape[b_node_shape.len() - 1];
-    let k = a_node_shape[a_node_shape.len() - 1];
-
-    kernel.register_meta(m);
-    kernel.register_meta(n);
-    kernel.register_meta(k);
-
-    let m = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Immut,
-        Some(Op::ReadMeta { param: 0, field: m }),
-    );
-    let n = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Immut,
-        Some(Op::ReadMeta { param: 0, field: n }),
-    );
-    let k = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Immut,
-        Some(Op::ReadMeta { param: 0, field: k }),
-    );
-
-    if backwardness.is_none() {
-        kernel
-            .raw
-            .overwrite_var(out, node.dtype.constant_float(0.0)?);
-    }
-
-    let lower = if options.target.flags.contains(TargetFlags::LIN_ACC) {
-        wmma::forward_matmul
-    } else {
-        generic::forward_matmul
-    };
-
-    lower(
-        eval_node,
-        node.dtype,
-        root,
-        input,
-        resolved,
-        m,
-        n,
-        k,
-        transpose_a,
-        transpose_b,
-        &a_node,
-        &b_node,
-        graph,
-        out,
-        node_params,
-        saved_params,
-        kernel,
-        base,
-        row,
-        col,
-        local_row,
-        local_col,
-        shared_size,
-        tile_size,
-        params,
-        stable_iteration_space,
-        options,
-    )
 }
+
+impl_lower!(generic_matmul_recursive generic);
+
+impl_lower!(wmma_matmul_recursive wmma);
 
 pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     fn save(node_id: NodeId, node: &Node, graph: &Graph, saved: &mut [SaveIndicator]) {
@@ -282,7 +284,11 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
     graph.push_node(Node {
         op: GraphOp::Custom {
-            lower: lower_matmul_recursive,
+            lower: if graph.target.flags.contains(TargetFlags::LIN_ACC) {
+                wmma_matmul_recursive
+            } else {
+                generic_matmul_recursive
+            },
             arity: 2,
             need_dims: true,
             stable_iter: false,
