@@ -177,8 +177,8 @@ pub struct GraphGuard {
 
 impl GraphGuard {
     pub fn with<R>(&self, f: impl FnOnce(&InnerGraph) -> R) -> R {
-        let mut graph = self.ops.graph.borrow();
-        f(&mut graph)
+        let graph = self.ops.graph.borrow();
+        f(&graph)
     }
 
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut InnerGraph) -> R) -> R {
