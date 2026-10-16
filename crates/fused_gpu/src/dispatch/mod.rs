@@ -15,7 +15,7 @@ use briny::{
     },
     traits::Pod,
 };
-use core::fmt::Debug;
+use core::{fmt::Debug, num::NonZeroU8};
 use half::slice::HalfFloatSliceExt;
 use std::{vec, vec::Vec};
 
@@ -39,6 +39,7 @@ pub struct CompilationOptions {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct TargetCompilationOptions {
     pub flags: TargetFlags,
+    pub subgroup_size: Option<NonZeroU8>,
 }
 
 bitflags::bitflags! {

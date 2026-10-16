@@ -1,5 +1,5 @@
 /target
 /Cargo.lock
-/mma_test.cu
+/kernels
 /ir.intra
 /data

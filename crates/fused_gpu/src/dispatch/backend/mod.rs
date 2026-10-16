@@ -83,6 +83,7 @@ impl GpuBackend for NopGpuContext {
     fn target_spec(&self) -> TargetCompilationOptions {
         TargetCompilationOptions {
             flags: TargetFlags::empty(),
+            subgroup_size: None,
         }
     }
 
@@ -1000,6 +1001,7 @@ impl Graph {
             nodes: Vec::new(),
             target: TargetCompilationOptions {
                 flags: TargetFlags::empty(),
+                subgroup_size: None,
             },
             loss,
             optim,

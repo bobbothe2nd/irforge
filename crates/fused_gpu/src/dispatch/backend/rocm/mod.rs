@@ -18,7 +18,7 @@ pub use rocm_rt::{
     shared::{GfxVersion, MatrixKind},
 };
 
-use core::{marker::PhantomData, ptr::from_ref};
+use core::{marker::PhantomData, ptr::from_ref, num::NonZeroU8};
 use std::rc::Rc;
 
 use briny::raw::cast::slice_to_bytes;
@@ -178,7 +178,9 @@ impl GpuBackend for GpuContext {
             flags |= TargetFlags::LIN_ACC;
         }
 
-        TargetCompilationOptions { flags }
+        let subgroup_size = NonZeroU8::new(capabilities.wave_size as u8);
+
+        TargetCompilationOptions { flags, subgroup_size }
     }
 
     fn download(&self, buffer: &Self::Buffer, out: &mut [u8], src_off: u32) -> Result<(), Error> {

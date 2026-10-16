@@ -151,6 +151,7 @@ impl GpuBackend for GpuContext {
     fn target_spec(&self) -> TargetCompilationOptions {
         TargetCompilationOptions {
             flags: TargetFlags::empty(),
+            subgroup_size: None,
         }
     }
 
