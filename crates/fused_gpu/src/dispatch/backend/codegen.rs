@@ -204,17 +204,18 @@ where
         ValueState::Masked | ValueState::Inline => {}
 
         ValueState::Const => {
-            let _ = write!(out, "const {} v{id}", val.dtype.fmt_c());
+            let _ = write!(out, "#define v{id}");
 
             if let Some(op) = &val.init {
-                let _ = out.write_str(" = ");
                 process_op(out, op, nesting, kernel)?;
             }
-
-            let _ = out.write_char(';');
         }
 
-        _ => {
+        var => {
+            if var == ValueState::Immut {
+                let _ = out.write_str("const ");
+            }
+
             let _ = write!(out, "{} v{id}", val.dtype.fmt_c());
 
             if let Some(op) = &val.init {

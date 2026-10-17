@@ -25,12 +25,16 @@ pub fn generate_hip(
 #include <hip/hip_bfloat16.h>
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
+
+using namespace hip;
+
 "
     .parse::<String>();
 
     if options.target.flags.contains(TargetFlags::LIN_ACC) {
         out.push_str(
-            "#include <hip/hip_wmma.h>
+            "
+#include <hip/hip_wmma.h>
 
 using namespace hip::wmma;
 
