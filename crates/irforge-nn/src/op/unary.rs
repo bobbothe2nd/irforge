@@ -186,7 +186,7 @@ macro_rules! lower_unary {
                         Some($dtype.constant_float(0.0)?),
                     );
 
-                    let mut back_deepest = eval_node(
+                    deepest.extend(eval_node(
                         root,
                         input,
                         &NodeInput::Node(node_id),
@@ -205,9 +205,7 @@ macro_rules! lower_unary {
                         params,
                         stable_iteration_space,
                         options,
-                    )?;
-
-                    deepest.append(&mut back_deepest);
+                    )?);
 
                     $back_op(kernel, out, saved, acc)?;
                 }

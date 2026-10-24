@@ -318,8 +318,8 @@ pub fn forward_matmul(
         Ok(())
     })?;
 
-    deepest.append(&mut a_deepest);
-    deepest.append(&mut b_deepest);
+    deepest.extend(a_deepest);
+    deepest.extend(b_deepest);
 
     Ok(deepest)
 }

@@ -125,7 +125,7 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut a_deep = eval_node(
+                        let a_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(a),
@@ -150,7 +150,7 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut b_deep = eval_node(
+                        let b_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(b),
@@ -171,8 +171,8 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut a_deep);
-                        deepest.append(&mut b_deep);
+                        deepest.extend(a_deep);
+                        deepest.extend(b_deep);
 
                         kernel
                             .raw
@@ -180,7 +180,7 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                     }
 
                     Some(0 | 1) => {
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -201,7 +201,7 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     _ => {
@@ -287,7 +287,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut a_deep = eval_node(
+                        let a_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(a),
@@ -312,7 +312,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut b_deep = eval_node(
+                        let b_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(b),
@@ -333,8 +333,8 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut a_deep);
-                        deepest.append(&mut b_deep);
+                        deepest.extend(a_deep);
+                        deepest.extend(b_deep);
 
                         kernel
                             .raw
@@ -348,7 +348,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             Some(dtype.constant_float(0.0)?),
                         );
 
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -376,7 +376,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         kernel.raw.accum_var(out, Op::Mul { a: g_val, b: saved });
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     Some(1) => {
@@ -386,7 +386,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             Some(dtype.constant_float(0.0)?),
                         );
 
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -414,7 +414,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         kernel.raw.accum_var(out, Op::Mul { a: g_val, b: saved });
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     _ => {
@@ -500,7 +500,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut a_deep = eval_node(
+                        let a_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(a),
@@ -525,7 +525,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut b_deep = eval_node(
+                        let b_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(b),
@@ -546,8 +546,8 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut a_deep);
-                        deepest.append(&mut b_deep);
+                        deepest.extend(a_deep);
+                        deepest.extend(b_deep);
 
                         kernel
                             .raw
@@ -555,7 +555,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                     }
 
                     Some(0) => {
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -576,7 +576,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     Some(1) => {
@@ -586,7 +586,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             Some(dtype.constant_float(0.0)?),
                         );
 
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -609,7 +609,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         kernel.raw.accum_var(out, Op::Neg { x: g_val });
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     _ => {
@@ -695,7 +695,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut a_deep = eval_node(
+                        let a_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(a),
@@ -720,7 +720,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             .raw
                             .def_var(DType::Simple(dtype), ValueState::Mut, None);
 
-                        let mut b_deep = eval_node(
+                        let b_deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(b),
@@ -741,8 +741,8 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             options,
                         )?;
 
-                        deepest.append(&mut a_deep);
-                        deepest.append(&mut b_deep);
+                        deepest.extend(a_deep);
+                        deepest.extend(b_deep);
 
                         kernel
                             .raw
@@ -756,7 +756,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             Some(dtype.constant_float(0.0)?),
                         );
 
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -784,7 +784,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         kernel.raw.accum_var(out, Op::Div { a: g_val, b: saved });
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     Some(1) => {
@@ -794,7 +794,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             Some(dtype.constant_float(0.0)?),
                         );
 
-                        let mut deep = eval_node(
+                        let deep = eval_node(
                             root,
                             input,
                             &NodeInput::Node(node_id),
@@ -847,7 +847,7 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                             },
                         );
 
-                        deepest.append(&mut deep);
+                        deepest.extend(deep);
                     }
 
                     _ => {
