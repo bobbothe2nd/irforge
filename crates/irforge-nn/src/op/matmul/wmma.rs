@@ -71,12 +71,23 @@ pub fn forward_matmul(
     let zero_u = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: 0 }),
+        Some(Op::ConstU32 { val: 0 }),
     );
     let zero_f = kernel.raw.def_var(
         DType::Simple(dtype),
         ValueState::Inline,
-        Some(Op::ConstF32 { value: 0.0 }),
+        Some(Op::ConstF32 { val: 0.0 }),
+    );
+
+    let tile_m = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Inline,
+        Some(Op::ConstU32 { val: 16 * block[0] }),
+    );
+    let tile_n = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Inline,
+        Some(Op::ConstU32 { val: 16 * block[1] }),
     );
 
     let frag_a = kernel.raw.def_var(
@@ -100,13 +111,17 @@ pub fn forward_matmul(
     let tk = kernel.raw.def_var(
         DType::Simple(SimpleDType::F32),
         ValueState::Mut,
-        Some(Op::ConstU32 { value: 0 }),
+        Some(Op::ConstU32 { val: 0 }),
     );
 
     let mut a_deepest = Vec::new();
     let mut b_deepest = Vec::new();
 
     kernel.push_for_loop(tk, k, tile_size, |kernel| {
+        let a_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: (), b: () }));
+
+        kernel.raw.load_matrix_sync(frag_a, a_idx, k);
+
         Ok(())
     })?;
 

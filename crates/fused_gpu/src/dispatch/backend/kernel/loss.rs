@@ -18,7 +18,7 @@ pub fn lower_loss(graph: &Graph, meta: Metadata) -> Result<Kernel, Error> {
         raw: RawKernel {
             meta,
             shared: Vec::new(),
-            values: Vec::new(),
+            vals: Vec::new(),
             ops: Vec::new(),
             block: Block::ZERO3,
             root,

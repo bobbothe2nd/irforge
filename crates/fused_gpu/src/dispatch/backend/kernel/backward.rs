@@ -131,7 +131,7 @@ pub fn lower_backward(
                 let tile_size = kernel.raw.def_var(
                     DType::Simple(SimpleDType::U32),
                     ValueState::Const,
-                    Some(Op::ConstU32 { value: tile_size }),
+                    Some(Op::ConstU32 { val: tile_size }),
                 );
                 let local_row = kernel.raw.def_var(
                     DType::Simple(SimpleDType::U32),
@@ -382,7 +382,7 @@ fn gen_kernel(
         raw: RawKernel {
             meta,
             shared: Vec::new(),
-            values: Vec::new(),
+            vals: Vec::new(),
             ops: Vec::new(),
             block: Block::new(block),
             root: input,
@@ -428,7 +428,7 @@ fn gen_kernel(
     let mut base = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Mut,
-        Some(Op::ConstU32 { value: 0 }),
+        Some(Op::ConstU32 { val: 0 }),
     );
 
     let total = dims[0];

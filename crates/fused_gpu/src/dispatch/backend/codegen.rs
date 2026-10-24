@@ -156,7 +156,7 @@ pub fn def_var_wgsl<F>(
 where
     F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
 {
-    let val = &kernel.values[id];
+    let val = &kernel.vals[id];
     match val.state {
         ValueState::Masked | ValueState::Inline => {}
         ValueState::Const => {
@@ -198,7 +198,7 @@ pub fn def_var_c<F>(
 where
     F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
 {
-    let val = &kernel.values[id];
+    let val = &kernel.vals[id];
 
     match val.state {
         ValueState::Masked | ValueState::Inline => {}
@@ -235,7 +235,7 @@ where
     F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
 {
     let mut out = String::new();
-    let val = &kernel.values[id];
+    let val = &kernel.vals[id];
     match val.state {
         ValueState::Inline => {
             if let Some(op) = &val.init {

@@ -13,13 +13,13 @@ pub fn optimize(kernel: &mut RawKernel, options: &CompilationOptions) -> Result<
         dead_code_elimination(kernel, options);
 
         if options.opt.flags.contains(OptFlags::UNUSED_MUT) {
-            for value_id in 0..kernel.values.len() {
-                if kernel.values[value_id].state == ValueState::Mut
-                    && kernel.values[value_id].init.is_some()
+            for val_id in 0..kernel.vals.len() {
+                if kernel.vals[val_id].state == ValueState::Mut
+                    && kernel.vals[val_id].init.is_some()
                     && !(0..kernel.ops.len())
-                        .any(|statement| kernel.ops[statement].does_mutate(value_id))
+                        .any(|statement| kernel.ops[statement].does_mutate(val_id))
                 {
-                    kernel.values[value_id].state = ValueState::Immut;
+                    kernel.vals[val_id].state = ValueState::Immut;
                 }
             }
         }
@@ -29,22 +29,22 @@ pub fn optimize(kernel: &mut RawKernel, options: &CompilationOptions) -> Result<
         }
 
         if options.opt.flags.contains(OptFlags::MUL_ADD) {
-            for value_id in 0..kernel.values.len() {
-                if kernel.values[value_id].state == ValueState::Masked
-                    || !kernel.values[value_id].dtype.is_float()
+            for val_id in 0..kernel.vals.len() {
+                if kernel.vals[val_id].state == ValueState::Masked
+                    || !kernel.vals[val_id].dtype.is_float()
                 {
                     continue;
                 }
 
-                if let Some(Op::Add { a, b }) = kernel.values[value_id].init {
-                    if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.values[a].init {
-                        kernel.values[value_id].init.replace(Op::Fma {
+                if let Some(Op::Add { a, b }) = kernel.vals[val_id].init {
+                    if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.vals[a].init {
+                        kernel.vals[val_id].init.replace(Op::Fma {
                             a: a_mul,
                             b: b_mul,
                             c: b,
                         });
-                    } else if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.values[b].init {
-                        kernel.values[value_id].init.replace(Op::Fma {
+                    } else if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.vals[b].init {
+                        kernel.vals[val_id].init.replace(Op::Fma {
                             a: a_mul,
                             b: b_mul,
                             c: a,
@@ -53,31 +53,31 @@ pub fn optimize(kernel: &mut RawKernel, options: &CompilationOptions) -> Result<
                 }
             }
 
-            let additions = iter_values(kernel, |op, value_id| {
-                if kernel.values[value_id].state == ValueState::Masked
-                    || !kernel.values[value_id].dtype.is_float()
+            let additions = iter_vals(kernel, |op, val_id| {
+                if kernel.vals[val_id].state == ValueState::Masked
+                    || !kernel.vals[val_id].dtype.is_float()
                 {
                     return None;
                 }
 
                 if let Op::Add { a, b } = &op {
-                    Some((*a, *b, value_id))
+                    Some((*a, *b, val_id))
                 } else {
                     None
                 }
             });
 
-            for (a, b, value_id) in additions {
-                if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.values[a].init {
-                    kernel.values[value_id].init.replace(Op::Fma {
+            for (a, b, val_id) in additions {
+                if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.vals[a].init {
+                    kernel.vals[val_id].init.replace(Op::Fma {
                         a: a_mul,
                         b: b_mul,
                         c: b,
                     });
                 }
 
-                if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.values[b].init {
-                    kernel.values[value_id].init.replace(Op::Fma {
+                if let Some(Op::Mul { a: a_mul, b: b_mul }) = kernel.vals[b].init {
+                    kernel.vals[val_id].init.replace(Op::Fma {
                         a: a_mul,
                         b: b_mul,
                         c: a,
@@ -87,83 +87,83 @@ pub fn optimize(kernel: &mut RawKernel, options: &CompilationOptions) -> Result<
         }
 
         if options.opt.flags.contains(OptFlags::DIV_CONST) {
-            let divisions = iter_values(kernel, |op, value_id| {
-                if kernel.values[value_id].state == ValueState::Masked
-                    || !kernel.values[value_id].dtype.is_float()
+            let divisions = iter_vals(kernel, |op, val_id| {
+                if kernel.vals[val_id].state == ValueState::Masked
+                    || !kernel.vals[val_id].dtype.is_float()
                 {
                     return None;
                 }
 
                 if let Op::Div { a, b } = &op {
-                    Some((*a, *b, value_id))
+                    Some((*a, *b, val_id))
                 } else {
                     None
                 }
             });
 
-            for (a, b, value_id) in divisions {
-                if kernel.values[b].state == ValueState::Mut {
+            for (a, b, val_id) in divisions {
+                if kernel.vals[b].state == ValueState::Mut {
                     continue;
                 }
 
-                if let Some(Op::ConstF32 { value }) = kernel.values[b].init {
-                    kernel.values[b]
+                if let Some(Op::ConstF32 { val }) = kernel.vals[b].init {
+                    kernel.vals[b]
                         .init
-                        .replace(Op::ConstF32 { value: 1.0 / value });
+                        .replace(Op::ConstF32 { val: 1.0 / val });
 
-                    kernel.values[value_id].init.replace(Op::Mul { a, b });
+                    kernel.vals[val_id].init.replace(Op::Mul { a, b });
                 }
             }
         }
 
         if options.opt.flags.contains(OptFlags::CONST_FOLD) {
-            for value_id in 0..kernel.values.len() {
-                if kernel.values[value_id].state == ValueState::Masked {
+            for val_id in 0..kernel.vals.len() {
+                if kernel.vals[val_id].state == ValueState::Masked {
                     continue;
                 }
 
-                const_fold(kernel, value_id);
+                const_fold(kernel, val_id);
             }
         }
 
         if options.opt.flags.contains(OptFlags::IDENTITY) {
-            for value_id in 0..kernel.values.len() {
-                if kernel.values[value_id].state == ValueState::Masked {
+            for val_id in 0..kernel.vals.len() {
+                if kernel.vals[val_id].state == ValueState::Masked {
                     continue;
                 }
 
-                identity(kernel, value_id);
+                identity(kernel, val_id);
             }
         }
 
         if options.opt.flags.contains(OptFlags::COPY_IMMUT) {
-            for value_id in 0..kernel.values.len() {
+            for val_id in 0..kernel.vals.len() {
                 if !matches!(
-                    kernel.values[value_id].state,
+                    kernel.vals[val_id].state,
                     ValueState::Inline | ValueState::Immut
                 ) {
                     continue;
                 }
 
-                let copy_op = Op::CopyVar { id: value_id };
+                let copy_op = Op::CopyVar { id: val_id };
 
-                let copies = iter_values(kernel, |op, value_id| {
-                    if op == &copy_op && kernel.values[value_id].state != ValueState::Mut {
-                        Some(value_id)
+                let copies = iter_vals(kernel, |op, val_id| {
+                    if op == &copy_op && kernel.vals[val_id].state != ValueState::Mut {
+                        Some(val_id)
                     } else {
                         None
                     }
                 });
 
                 for copy_id in copies {
-                    for value in &mut kernel.values {
-                        if let Some(op) = &mut value.init {
-                            op.replace_usage(copy_id, value_id);
+                    for val in &mut kernel.vals {
+                        if let Some(op) = &mut val.init {
+                            op.replace_usage(copy_id, val_id);
                         }
                     }
 
                     for op in &mut kernel.ops {
-                        op.replace_usage(copy_id, value_id);
+                        op.replace_usage(copy_id, val_id);
                     }
                 }
             }
@@ -186,38 +186,38 @@ pub fn optimize(kernel: &mut RawKernel, options: &CompilationOptions) -> Result<
 #[inline]
 fn dead_code_elimination(kernel: &mut RawKernel, options: &CompilationOptions) {
     if options.opt.flags.contains(OptFlags::DEAD_CODE) {
-        for value_id in 0..kernel.values.len() {
-            if kernel.values[value_id].state == ValueState::Masked {
+        for val_id in 0..kernel.vals.len() {
+            if kernel.vals[val_id].state == ValueState::Masked {
                 continue;
             }
 
             if !any_ops(kernel, |op| {
-                op.does_read(value_id) && !op.does_mutate(value_id)
+                op.does_read(val_id) && !op.does_mutate(val_id)
             }) {
-                kernel.values[value_id].state = ValueState::Masked;
-                erase_writes(kernel, value_id);
+                kernel.vals[val_id].state = ValueState::Masked;
+                erase_writes(kernel, val_id);
             }
         }
     }
 }
 
 #[inline]
-fn iter_values<R>(kernel: &RawKernel, mut f: impl FnMut(&Op, ValueId) -> Option<R>) -> Vec<R> {
-    let mut value_ids = Vec::new();
+fn iter_vals<R>(kernel: &RawKernel, mut f: impl FnMut(&Op, ValueId) -> Option<R>) -> Vec<R> {
+    let mut val_ids = Vec::new();
 
-    for value_id in 0..kernel.values.len() {
-        if kernel.values[value_id].state == ValueState::Masked {
+    for val_id in 0..kernel.vals.len() {
+        if kernel.vals[val_id].state == ValueState::Masked {
             continue;
         }
 
-        if let Some(op) = &kernel.values[value_id].init
-            && let Some(value) = f(op, value_id)
+        if let Some(op) = &kernel.vals[val_id].init
+            && let Some(val) = f(op, val_id)
         {
-            value_ids.push(value);
+            val_ids.push(val);
         }
     }
 
-    value_ids
+    val_ids
 }
 
 #[inline]
@@ -228,8 +228,8 @@ fn any_ops(kernel: &RawKernel, mut f: impl FnMut(&Op) -> bool) -> bool {
         }
     }
 
-    for value in &kernel.values {
-        if let Some(init) = &value.init
+    for val in &kernel.vals {
+        if let Some(init) = &val.init
             && f(init)
         {
             return true;
@@ -240,9 +240,9 @@ fn any_ops(kernel: &RawKernel, mut f: impl FnMut(&Op) -> bool) -> bool {
 }
 
 #[inline]
-fn erase_writes(kernel: &mut RawKernel, value_id: ValueId) {
+fn erase_writes(kernel: &mut RawKernel, val_id: ValueId) {
     for op in &mut kernel.ops {
-        if op.does_write(value_id) {
+        if op.does_write(val_id) {
             *op = Op::Nop;
         }
     }
@@ -262,9 +262,9 @@ fn erase_nops(ops: &[Op]) -> Vec<Op> {
 }
 
 macro_rules! const_fold_op {
-    ($kernel:ident, $value_id:ident, $a:ident, $b:expr, $opu:path, $opi:path, $($opf:path)?) => {{
-        let a = $kernel.values[*$a];
-        let b = $kernel.values[*$b];
+    ($kernel:ident, $val_id:ident, $a:ident, $b:expr, $opu:path, $opi:path, $($opf:path)?) => {{
+        let a = $kernel.vals[*$a];
+        let b = $kernel.vals[*$b];
 
         if a.state == ValueState::Mut
         || b.state == ValueState::Mut {
@@ -274,14 +274,14 @@ macro_rules! const_fold_op {
         if let Some(a_op) = a.init
         && let Some(b_op) = b.init {
             match (a_op, b_op) {
-                $((Op::ConstF32 { value: a }, Op::ConstF32 { value: b }) => {
-                    $kernel.values[$value_id].init.replace(Op::ConstF32 { value: $opf(a, b) });
+                $((Op::ConstF32 { val: a }, Op::ConstF32 { val: b }) => {
+                    $kernel.vals[$val_id].init.replace(Op::ConstF32 { val: $opf(a, b) });
                 })?
-                (Op::ConstU32 { value: a }, Op::ConstU32 { value: b }) => {
-                    $kernel.values[$value_id].init.replace(Op::ConstU32 { value: $opu(a, b) });
+                (Op::ConstU32 { val: a }, Op::ConstU32 { val: b }) => {
+                    $kernel.vals[$val_id].init.replace(Op::ConstU32 { val: $opu(a, b) });
                 }
-                (Op::ConstI32 { value: a }, Op::ConstI32 { value: b }) => {
-                    $kernel.values[$value_id].init.replace(Op::ConstI32 { value: $opi(a, b) });
+                (Op::ConstI32 { val: a }, Op::ConstI32 { val: b }) => {
+                    $kernel.vals[$val_id].init.replace(Op::ConstI32 { val: $opi(a, b) });
                 }
                 _ => {}
             }
@@ -290,29 +290,29 @@ macro_rules! const_fold_op {
 }
 
 #[inline]
-fn const_fold(kernel: &mut RawKernel, value_id: ValueId) {
+fn const_fold(kernel: &mut RawKernel, val_id: ValueId) {
     use core::ops::{Add, Div, Mul, Shl, Shr, Sub};
 
-    if let Some(init) = &kernel.values[value_id].init {
+    if let Some(init) = &kernel.vals[val_id].init {
         match init {
             Op::Add { a, b } => {
-                const_fold_op!(kernel, value_id, a, b, u32::add, i32::add, f32::add);
+                const_fold_op!(kernel, val_id, a, b, u32::add, i32::add, f32::add);
             }
             Op::Mul { a, b } => {
-                const_fold_op!(kernel, value_id, a, b, u32::mul, i32::mul, f32::mul);
+                const_fold_op!(kernel, val_id, a, b, u32::mul, i32::mul, f32::mul);
             }
             Op::Sub { a, b } => {
-                const_fold_op!(kernel, value_id, a, b, u32::sub, i32::sub, f32::sub);
+                const_fold_op!(kernel, val_id, a, b, u32::sub, i32::sub, f32::sub);
             }
             Op::Div { a, b } => {
-                const_fold_op!(kernel, value_id, a, b, u32::div, i32::div, f32::div);
+                const_fold_op!(kernel, val_id, a, b, u32::div, i32::div, f32::div);
             }
-            Op::Shr { a, b } => const_fold_op!(kernel, value_id, a, b, u32::shr, i32::shr,),
-            Op::Shl { a, b } => const_fold_op!(kernel, value_id, a, b, u32::shl, i32::shl,),
+            Op::Shr { a, b } => const_fold_op!(kernel, val_id, a, b, u32::shr, i32::shr,),
+            Op::Shl { a, b } => const_fold_op!(kernel, val_id, a, b, u32::shl, i32::shl,),
             Op::Fma { a, b, c } => {
-                let a = kernel.values[*a];
-                let b = kernel.values[*b];
-                let c = kernel.values[*c];
+                let a = kernel.vals[*a];
+                let b = kernel.vals[*b];
+                let c = kernel.vals[*c];
 
                 if a.state == ValueState::Mut
                     || b.state == ValueState::Mut
@@ -321,12 +321,12 @@ fn const_fold(kernel: &mut RawKernel, value_id: ValueId) {
                     return;
                 }
 
-                if let Some(Op::ConstF32 { value: a }) = a.init
-                    && let Some(Op::ConstF32 { value: b }) = b.init
-                    && let Some(Op::ConstF32 { value: c }) = c.init
+                if let Some(Op::ConstF32 { val: a }) = a.init
+                    && let Some(Op::ConstF32 { val: b }) = b.init
+                    && let Some(Op::ConstF32 { val: c }) = c.init
                 {
-                    kernel.values[value_id].init.replace(Op::ConstF32 {
-                        value: a.mul_add(b, c),
+                    kernel.vals[val_id].init.replace(Op::ConstF32 {
+                        val: a.mul_add(b, c),
                     });
                 }
             }
@@ -336,44 +336,44 @@ fn const_fold(kernel: &mut RawKernel, value_id: ValueId) {
 }
 
 #[inline]
-fn identity(kernel: &mut RawKernel, value_id: ValueId) {
-    if let Some(init) = kernel.values[value_id].init {
+fn identity(kernel: &mut RawKernel, val_id: ValueId) {
+    if let Some(init) = kernel.vals[val_id].init {
         match init {
             Op::Add { a, b } => {
-                if kernel.values[a].init.is_some_and(|op| op.is_zero())
-                    && kernel.values[a].state != ValueState::Mut
+                if kernel.vals[a].init.is_some_and(|op| op.is_zero())
+                    && kernel.vals[a].state != ValueState::Mut
                 {
-                    kernel.values[value_id].init.replace(Op::CopyVar { id: b });
-                } else if kernel.values[b].init.is_some_and(|op| op.is_zero())
-                    && kernel.values[b].state != ValueState::Mut
+                    kernel.vals[val_id].init.replace(Op::CopyVar { id: b });
+                } else if kernel.vals[b].init.is_some_and(|op| op.is_zero())
+                    && kernel.vals[b].state != ValueState::Mut
                 {
-                    kernel.values[value_id].init.replace(Op::CopyVar { id: a });
+                    kernel.vals[val_id].init.replace(Op::CopyVar { id: a });
                 }
             }
             Op::Sub { a, b } => {
-                if kernel.values[b].init.is_some_and(|op| op.is_zero())
-                    && kernel.values[b].state != ValueState::Mut
+                if kernel.vals[b].init.is_some_and(|op| op.is_zero())
+                    && kernel.vals[b].state != ValueState::Mut
                 {
-                    kernel.values[value_id].init.replace(Op::CopyVar { id: a });
+                    kernel.vals[val_id].init.replace(Op::CopyVar { id: a });
                 }
             }
             Op::Mul { a, b } => {
-                if kernel.values[a].init.is_some_and(|op| op.is_one())
-                    && kernel.values[a].state != ValueState::Mut
+                if kernel.vals[a].init.is_some_and(|op| op.is_one())
+                    && kernel.vals[a].state != ValueState::Mut
                 {
-                    kernel.values[value_id].init.replace(Op::CopyVar { id: b });
+                    kernel.vals[val_id].init.replace(Op::CopyVar { id: b });
                 }
-                if kernel.values[b].init.is_some_and(|op| op.is_one())
-                    && kernel.values[b].state != ValueState::Mut
+                if kernel.vals[b].init.is_some_and(|op| op.is_one())
+                    && kernel.vals[b].state != ValueState::Mut
                 {
-                    kernel.values[value_id].init.replace(Op::CopyVar { id: a });
+                    kernel.vals[val_id].init.replace(Op::CopyVar { id: a });
                 }
             }
             Op::Div { a, b }
-                if kernel.values[b].init.is_some_and(|op| op.is_one())
-                    && kernel.values[b].state != ValueState::Mut =>
+                if kernel.vals[b].init.is_some_and(|op| op.is_one())
+                    && kernel.vals[b].state != ValueState::Mut =>
             {
-                kernel.values[value_id].init.replace(Op::CopyVar { id: a });
+                kernel.vals[val_id].init.replace(Op::CopyVar { id: a });
             }
             _ => {}
         }
@@ -381,8 +381,8 @@ fn identity(kernel: &mut RawKernel, value_id: ValueId) {
 }
 
 macro_rules! impl_op_assign {
-    (@var $kernel:ident, $op_id:ident, $id:ident, $value:ident, $($inline:ident => $assign:ident),*) => {
-        match $value.init {
+    (@var $kernel:ident, $op_id:ident, $id:ident, $val:ident, $($inline:ident => $assign:ident),*) => {
+        match $val.init {
             $(
                 Some(Op::$inline { a, b }) => if a == $id {
                     $kernel.ops[$op_id] = Op::$assign { $id, val: b }
@@ -394,13 +394,13 @@ macro_rules! impl_op_assign {
         }
     };
 
-    (@param $load:ident, $kernel:ident, $op_id:ident, $param:ident, $index:ident, $value:ident, $($inline:ident => $assign:ident),*) => {
-        match $value.init {
+    (@param $load:ident, $kernel:ident, $op_id:ident, $param:ident, $index:ident, $val:ident, $($inline:ident => $assign:ident),*) => {
+        match $val.init {
             $(
-                Some(Op::$inline { a, b }) => if $kernel.values[a].init == Some(Op::$load { $param, $index }) {
-                    $kernel.ops[$op_id] = Op::$assign { $param, $index, value: b }
-                } else if $kernel.values[b].init == Some(Op::$load { $param, $index }) {
-                    $kernel.ops[$op_id] = Op::$assign { $param, $index, value: a }
+                Some(Op::$inline { a, b }) => if $kernel.vals[a].init == Some(Op::$load { $param, $index }) {
+                    $kernel.ops[$op_id] = Op::$assign { $param, $index, val: b }
+                } else if $kernel.vals[b].init == Some(Op::$load { $param, $index }) {
+                    $kernel.ops[$op_id] = Op::$assign { $param, $index, val: a }
                 }
             )*
             _ => {}
@@ -412,15 +412,15 @@ macro_rules! impl_op_assign {
 fn op_assign(kernel: &mut RawKernel) {
     for op_id in 0..kernel.ops.len() {
         if let Op::OverwriteVar { id, val } = kernel.ops[op_id] {
-            let value = &mut kernel.values[val];
+            let val = &mut kernel.vals[val];
 
-            if value.state == ValueState::Inline {
+            if val.state == ValueState::Inline {
                 impl_op_assign!(
                     @var
                     kernel,
                     op_id,
                     id,
-                    value,
+                    val,
                     Add => AddAssign,
                     Sub => SubAssign,
                     Mul => MulAssign,
@@ -434,12 +434,12 @@ fn op_assign(kernel: &mut RawKernel) {
         if let Op::ParamStore {
             param,
             index,
-            value,
+            val,
         } = kernel.ops[op_id]
         {
-            let value = &mut kernel.values[value];
+            let val = &mut kernel.vals[val];
 
-            if value.state == ValueState::Inline {
+            if val.state == ValueState::Inline {
                 impl_op_assign!(
                     @param
                     ParamLoad,
@@ -447,7 +447,7 @@ fn op_assign(kernel: &mut RawKernel) {
                     op_id,
                     param,
                     index,
-                    value,
+                    val,
                     Add => ParamAccum,
                     Sub => ParamSub,
                     Mul => ParamMul,
@@ -458,10 +458,10 @@ fn op_assign(kernel: &mut RawKernel) {
             }
         }
 
-        if let Op::SharedStore { mem, index, value } = kernel.ops[op_id] {
-            let value = &mut kernel.values[value];
+        if let Op::SharedStore { mem, index, val } = kernel.ops[op_id] {
+            let val = &mut kernel.vals[val];
 
-            if value.state == ValueState::Inline {
+            if val.state == ValueState::Inline {
                 impl_op_assign!(
                     @param
                     SharedLoad,
@@ -469,7 +469,7 @@ fn op_assign(kernel: &mut RawKernel) {
                     op_id,
                     mem,
                     index,
-                    value,
+                    val,
                     Add => SharedAccum,
                     Sub => SharedSub,
                     Mul => SharedMul,

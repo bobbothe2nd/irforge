@@ -76,17 +76,17 @@ pub fn lower_softmax_recursive(
     let shared_size_const = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: shared_size }),
+        Some(Op::ConstU32 { val: shared_size }),
     );
     let zero = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: 0 }),
+        Some(Op::ConstU32 { val: 0 }),
     );
     let one = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: 1 }),
+        Some(Op::ConstU32 { val: 1 }),
     );
     let one_f = kernel.raw.def_var(
         DType::Simple(dtype),
@@ -168,7 +168,7 @@ pub fn lower_softmax_recursive(
 
                 kernel
                     .raw
-                    .accum_var(col, Op::ConstU32 { value: shared_size });
+                    .accum_var(col, Op::ConstU32 { val: shared_size });
 
                 Ok(())
             })?;
@@ -336,7 +336,7 @@ pub fn lower_softmax_recursive(
 
                 kernel
                     .raw
-                    .accum_var(col, Op::ConstU32 { value: shared_size });
+                    .accum_var(col, Op::ConstU32 { val: shared_size });
 
                 Ok(())
             })?;
@@ -437,7 +437,7 @@ pub fn lower_softmax_recursive(
 
                 kernel
                     .raw
-                    .accum_var(col, Op::ConstU32 { value: shared_size });
+                    .accum_var(col, Op::ConstU32 { val: shared_size });
 
                 Ok(())
             })?;
@@ -517,7 +517,7 @@ pub fn lower_softmax_recursive(
 
                 kernel
                     .raw
-                    .accum_var(col, Op::ConstU32 { value: shared_size });
+                    .accum_var(col, Op::ConstU32 { val: shared_size });
 
                 Ok(())
             })?;
@@ -598,7 +598,7 @@ pub fn lower_softmax_recursive(
 
             kernel.raw.push_barrier();
 
-            kernel.raw.overwrite_var(col, Op::ConstU32 { value: 0 });
+            kernel.raw.overwrite_var(col, Op::ConstU32 { val: 0 });
 
             kernel.push_while_loop(Op::Lt { a: col, b: cols }, |kernel| {
                 let row_flat = kernel.raw.def_var(
@@ -679,7 +679,7 @@ pub fn lower_softmax_recursive(
 
                 kernel
                     .raw
-                    .accum_var(col, Op::ConstU32 { value: shared_size });
+                    .accum_var(col, Op::ConstU32 { val: shared_size });
 
                 Ok(())
             })?;

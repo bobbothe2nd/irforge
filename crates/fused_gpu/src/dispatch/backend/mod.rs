@@ -240,7 +240,7 @@ pub type MetaId = usize;
 /// Identifier of a shared buffer in kernel IR.
 pub type SharedId = usize;
 
-/// Identifier of a value in kernel IR.
+/// Identifier of a val in kernel IR.
 pub type ValueId = usize;
 
 /// Data type used in kernel IR.
@@ -301,9 +301,9 @@ impl DType {
     }
 
     #[inline]
-    pub fn constant_float(self, value: f32) -> Result<Op, Error> {
+    pub fn constant_float(self, val: f32) -> Result<Op, Error> {
         match self {
-            Self::Simple(dtype) => dtype.constant_float(value),
+            Self::Simple(dtype) => dtype.constant_float(val),
             _ => Err(Error {
                 msg: "cannot represent MMA fragment dtype as float constant",
                 kind: ErrorKind::InternalError,
@@ -379,15 +379,15 @@ impl SimpleDType {
     }
 
     #[inline]
-    pub fn constant_float(self, value: f32) -> Result<Op, Error> {
+    pub fn constant_float(self, val: f32) -> Result<Op, Error> {
         match self {
             Self::BF16 => Ok(Op::ConstBf16 {
-                value: bf16::from_f32(value),
+                val: bf16::from_f32(val),
             }),
             Self::F16 => Ok(Op::ConstF16 {
-                value: f16::from_f32(value),
+                val: f16::from_f32(val),
             }),
-            Self::F32 => Ok(Op::ConstF32 { value }),
+            Self::F32 => Ok(Op::ConstF32 { val }),
             _ => Err(Error {
                 msg: "cannot represent non-float dtype as float constant",
                 kind: ErrorKind::InternalError,
@@ -399,14 +399,14 @@ impl SimpleDType {
     #[inline]
     pub const fn constant_min(self) -> Result<Op, Error> {
         match self {
-            Self::BF16 => Ok(Op::ConstBf16 { value: bf16::MIN }),
-            Self::F16 => Ok(Op::ConstF16 { value: f16::MIN }),
-            Self::F32 => Ok(Op::ConstF32 { value: f32::MIN }),
-            Self::F64 => Ok(Op::ConstF64 { value: f64::MIN }),
-            Self::I32 => Ok(Op::ConstI32 { value: i32::MIN }),
-            Self::U32 => Ok(Op::ConstU32 { value: u32::MIN }),
+            Self::BF16 => Ok(Op::ConstBf16 { val: bf16::MIN }),
+            Self::F16 => Ok(Op::ConstF16 { val: f16::MIN }),
+            Self::F32 => Ok(Op::ConstF32 { val: f32::MIN }),
+            Self::F64 => Ok(Op::ConstF64 { val: f64::MIN }),
+            Self::I32 => Ok(Op::ConstI32 { val: i32::MIN }),
+            Self::U32 => Ok(Op::ConstU32 { val: u32::MIN }),
             Self::Bool => Err(Error {
-                msg: "cannot represent bool dtype as MIN value",
+                msg: "cannot represent bool dtype as MIN val",
                 kind: ErrorKind::InternalError,
                 ctx: (),
             }),
@@ -416,14 +416,14 @@ impl SimpleDType {
     #[inline]
     pub const fn constant_max(self) -> Result<Op, Error> {
         match self {
-            Self::BF16 => Ok(Op::ConstBf16 { value: bf16::MAX }),
-            Self::F16 => Ok(Op::ConstF16 { value: f16::MAX }),
-            Self::F32 => Ok(Op::ConstF32 { value: f32::MAX }),
-            Self::F64 => Ok(Op::ConstF64 { value: f64::MAX }),
-            Self::I32 => Ok(Op::ConstI32 { value: i32::MAX }),
-            Self::U32 => Ok(Op::ConstU32 { value: u32::MAX }),
+            Self::BF16 => Ok(Op::ConstBf16 { val: bf16::MAX }),
+            Self::F16 => Ok(Op::ConstF16 { val: f16::MAX }),
+            Self::F32 => Ok(Op::ConstF32 { val: f32::MAX }),
+            Self::F64 => Ok(Op::ConstF64 { val: f64::MAX }),
+            Self::I32 => Ok(Op::ConstI32 { val: i32::MAX }),
+            Self::U32 => Ok(Op::ConstU32 { val: u32::MAX }),
             Self::Bool => Err(Error {
-                msg: "cannot represent bool dtype as MAX value",
+                msg: "cannot represent bool dtype as MAX val",
                 kind: ErrorKind::InternalError,
                 ctx: (),
             }),
@@ -460,7 +460,7 @@ pub struct Value {
     pub init: Option<Op>,
 }
 
-/// Value state type that defines a value.
+/// Value state type that defines a val.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueState {
     Mut,
@@ -471,24 +471,25 @@ pub enum ValueState {
 }
 
 /// Axis type used in kernel IR.
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
     /// x-axis (0)
-    X,
+    X = 0,
 
     /// y-axis (1)
-    Y,
+    Y = 1,
 
     /// z-axis (2)
-    Z,
+    Z = 2,
 }
 
 impl TryFrom<u8> for Axis {
     type Error = Error;
 
     #[inline]
-    fn try_from(value: u8) -> Result<Self, Error> {
-        match value {
+    fn try_from(val: u8) -> Result<Self, Error> {
+        match val {
             0 => Ok(Self::X),
             1 => Ok(Self::Y),
             2 => Ok(Self::Z),

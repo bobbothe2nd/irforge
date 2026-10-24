@@ -43,22 +43,22 @@ pub enum Op {
     },
 
     ConstF64 {
-        value: f64,
+        val: f64,
     },
     ConstF32 {
-        value: f32,
+        val: f32,
     },
     ConstF16 {
-        value: half::f16,
+        val: half::f16,
     },
     ConstBf16 {
-        value: half::bf16,
+        val: half::bf16,
     },
     ConstU32 {
-        value: u32,
+        val: u32,
     },
     ConstI32 {
-        value: i32,
+        val: i32,
     },
 
     ReadMeta {
@@ -144,37 +144,37 @@ pub enum Op {
     ParamStore {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamAccum {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamMul {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamDiv {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamSub {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamShl {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     ParamShr {
         param: ParamId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
 
     SharedLoad {
@@ -184,37 +184,37 @@ pub enum Op {
     SharedStore {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedAccum {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedMul {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedDiv {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedSub {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedShl {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
     SharedShr {
         mem: SharedId,
         index: ValueId,
-        value: ValueId,
+        val: ValueId,
     },
 
     Eq {
@@ -300,8 +300,8 @@ pub enum Op {
     /// 1. indexing into a fragment is valid with unspecified order
     /// 2. indexing into a parameter or shared memory is always invalid
     Index {
-        ptr: ValueId,
-        idx: ValueId,
+        pointer: ValueId,
+        index: ValueId,
     },
 
     /// Tensor/matrix core requires `TargetCompilationOptions::LIN_ACC`
@@ -394,24 +394,24 @@ impl Op {
             | Self::OverwriteVar { val, .. } => val == &value_id,
             Self::ForLoopBegin { index, end, step } => index == &value_id || end == &value_id || step == &value_id,
             Self::IfBegin { cond } => cond == &value_id,
-            Self::ParamAccum { index, value, .. }
-            | Self::ParamDiv { index, value, .. }
-            | Self::ParamMul { index, value, .. }
-            | Self::ParamShl { index, value, .. }
-            | Self::ParamShr { index, value, .. }
-            | Self::ParamStore { index, value, .. }
-            | Self::ParamSub { index, value, .. }
-            | Self::SharedAccum { index, value, .. }
-            | Self::SharedDiv { index, value, .. }
-            | Self::SharedMul { index, value, .. }
-            | Self::SharedShl { index, value, .. }
-            | Self::SharedShr { index, value, .. }
-            | Self::SharedStore { index, value, .. }
-            | Self::SharedSub { index, value, .. } => index == &value_id || value == &value_id,
+            Self::ParamAccum { index, val, .. }
+            | Self::ParamDiv { index, val, .. }
+            | Self::ParamMul { index, val, .. }
+            | Self::ParamShl { index, val, .. }
+            | Self::ParamShr { index, val, .. }
+            | Self::ParamStore { index, val, .. }
+            | Self::ParamSub { index, val, .. }
+            | Self::SharedAccum { index, val, .. }
+            | Self::SharedDiv { index, val, .. }
+            | Self::SharedMul { index, val, .. }
+            | Self::SharedShl { index, val, .. }
+            | Self::SharedShr { index, val, .. }
+            | Self::SharedStore { index, val, .. }
+            | Self::SharedSub { index, val, .. } => index == &value_id || val == &value_id,
             Self::ParamLoad { index, .. } | Self::SharedLoad { index, .. } => index == &value_id,
             Self::Select { cond, a, b } => cond == &value_id || a == &value_id || b == &value_id,
             Self::MmaSync { acc, a, b, c } => a == &value_id || b == &value_id || c == &value_id || acc == &value_id,
-            Self::Index { ptr, idx } => ptr == &value_id || idx == &value_id,
+            Self::Index { pointer, index } => pointer == &value_id || index == &value_id,
             Self::LoadMatrixSync {
                 frag,
                 index,
@@ -486,22 +486,22 @@ impl Op {
                 replace_if_eq(step, old_id, new_id);
             }
             Self::IfBegin { cond } => replace_if_eq(cond, old_id, new_id),
-            Self::ParamAccum { index, value, .. }
-            | Self::ParamDiv { index, value, .. }
-            | Self::ParamMul { index, value, .. }
-            | Self::ParamShl { index, value, .. }
-            | Self::ParamShr { index, value, .. }
-            | Self::ParamStore { index, value, .. }
-            | Self::ParamSub { index, value, .. }
-            | Self::SharedAccum { index, value, .. }
-            | Self::SharedDiv { index, value, .. }
-            | Self::SharedMul { index, value, .. }
-            | Self::SharedShl { index, value, .. }
-            | Self::SharedShr { index, value, .. }
-            | Self::SharedStore { index, value, .. }
-            | Self::SharedSub { index, value, .. } => {
+            Self::ParamAccum { index, val, .. }
+            | Self::ParamDiv { index, val, .. }
+            | Self::ParamMul { index, val, .. }
+            | Self::ParamShl { index, val, .. }
+            | Self::ParamShr { index, val, .. }
+            | Self::ParamStore { index, val, .. }
+            | Self::ParamSub { index, val, .. }
+            | Self::SharedAccum { index, val, .. }
+            | Self::SharedDiv { index, val, .. }
+            | Self::SharedMul { index, val, .. }
+            | Self::SharedShl { index, val, .. }
+            | Self::SharedShr { index, val, .. }
+            | Self::SharedStore { index, val, .. }
+            | Self::SharedSub { index, val, .. } => {
                 replace_if_eq(index, old_id, new_id);
-                replace_if_eq(value, old_id, new_id);
+                replace_if_eq(val, old_id, new_id);
             }
             Self::ParamLoad { index, .. } | Self::SharedLoad { index, .. } => {
                 replace_if_eq(index, old_id, new_id);
@@ -517,9 +517,9 @@ impl Op {
                 replace_if_eq(c, old_id, new_id);
                 replace_if_eq(acc, old_id, new_id);
             }
-            Self::Index { ptr, idx } => {
-                replace_if_eq(ptr, old_id, new_id);
-                replace_if_eq(idx, old_id, new_id);
+            Self::Index { pointer, index } => {
+                replace_if_eq(pointer, old_id, new_id);
+                replace_if_eq(index, old_id, new_id);
             }
             Self::LoadMatrixSync {
                 frag,
@@ -571,7 +571,7 @@ impl Op {
     pub fn read_only(&self, kernel: &RawKernel) -> bool {
         #[inline]
         fn not_mut(value_id: ValueId, kernel: &RawKernel) -> bool {
-            kernel.values[value_id].state != ValueState::Mut
+            kernel.vals[value_id].state != ValueState::Mut
         }
 
         match self {
@@ -611,27 +611,27 @@ impl Op {
             | Self::OverwriteVar { val, id } => not_mut(*val, kernel) && not_mut(*id, kernel),
             Self::ForLoopBegin { index, end, step } => not_mut(*index, kernel) && not_mut(*end, kernel) && not_mut(*step, kernel),
             Self::IfBegin { cond } => not_mut(*cond, kernel),
-            Self::ParamAccum { index, value, .. }
-            | Self::ParamDiv { index, value, .. }
-            | Self::ParamMul { index, value, .. }
-            | Self::ParamShl { index, value, .. }
-            | Self::ParamShr { index, value, .. }
-            | Self::ParamStore { index, value, .. }
-            | Self::ParamSub { index, value, .. }
-            | Self::SharedAccum { index, value, .. }
-            | Self::SharedDiv { index, value, .. }
-            | Self::SharedMul { index, value, .. }
-            | Self::SharedShl { index, value, .. }
-            | Self::SharedShr { index, value, .. }
-            | Self::SharedStore { index, value, .. }
-            | Self::SharedSub { index, value, .. } => not_mut(*index, kernel) && not_mut(*value, kernel),
+            Self::ParamAccum { index, val, .. }
+            | Self::ParamDiv { index, val, .. }
+            | Self::ParamMul { index, val, .. }
+            | Self::ParamShl { index, val, .. }
+            | Self::ParamShr { index, val, .. }
+            | Self::ParamStore { index, val, .. }
+            | Self::ParamSub { index, val, .. }
+            | Self::SharedAccum { index, val, .. }
+            | Self::SharedDiv { index, val, .. }
+            | Self::SharedMul { index, val, .. }
+            | Self::SharedShl { index, val, .. }
+            | Self::SharedShr { index, val, .. }
+            | Self::SharedStore { index, val, .. }
+            | Self::SharedSub { index, val, .. } => not_mut(*index, kernel) && not_mut(*val, kernel),
             Self::ParamLoad { index, .. } | Self::SharedLoad { index, .. } => not_mut(*index, kernel),
             Self::Select { cond, a, b } => not_mut(*cond, kernel) && not_mut(*a, kernel) && not_mut(*b, kernel),
             Self::MmaSync { a, b, c, acc } => not_mut(*a, kernel)
                 && not_mut(*b, kernel)
                 && not_mut(*c, kernel)
                 && not_mut(*acc, kernel),
-            Self::Index { ptr, idx } => not_mut(*ptr, kernel) && not_mut(*idx, kernel),
+            Self::Index { pointer, index } => not_mut(*pointer, kernel) && not_mut(*index, kernel),
             Self::LoadMatrixSync {
                 frag,
                 index,
@@ -732,12 +732,12 @@ impl Op {
     #[must_use]
     pub fn is_zero(&self) -> bool {
         match self {
-            Self::ConstI32 { value } => *value == 0,
-            Self::ConstU32 { value } => *value == 0,
-            Self::ConstF32 { value } => value.abs() < 1e-9,
-            Self::ConstBf16 { value } => value.to_f32().abs() < 1e-9,
-            Self::ConstF16 { value } => value.to_f32().abs() < 1e-9,
-            Self::ConstF64 { value } => value.abs() < 1e-9,
+            Self::ConstI32 { val } => *val == 0,
+            Self::ConstU32 { val } => *val == 0,
+            Self::ConstF32 { val } => val.abs() < 1e-9,
+            Self::ConstBf16 { val } => val.to_f32().abs() < 1e-9,
+            Self::ConstF16 { val } => val.to_f32().abs() < 1e-9,
+            Self::ConstF64 { val } => val.abs() < 1e-9,
             _ => false,
         }
     }
@@ -746,12 +746,12 @@ impl Op {
     #[must_use]
     pub fn is_one(&self) -> bool {
         match self {
-            Self::ConstI32 { value } => *value == 1,
-            Self::ConstU32 { value } => *value == 1,
-            Self::ConstF32 { value } => (value - 1.0).abs() < 1e-9,
-            Self::ConstBf16 { value } => (value.to_f32() - 1.0).abs() < 1e-9,
-            Self::ConstF16 { value } => (value.to_f32() - 1.0).abs() < 1e-9,
-            Self::ConstF64 { value } => (value - 1.0).abs() < 1e-9,
+            Self::ConstI32 { val } => *val == 1,
+            Self::ConstU32 { val } => *val == 1,
+            Self::ConstF32 { val } => (val - 1.0).abs() < 1e-9,
+            Self::ConstBf16 { val } => (val.to_f32() - 1.0).abs() < 1e-9,
+            Self::ConstF16 { val } => (val.to_f32() - 1.0).abs() < 1e-9,
+            Self::ConstF64 { val } => (val - 1.0).abs() < 1e-9,
             _ => false,
         }
     }

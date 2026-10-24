@@ -66,13 +66,13 @@ pub fn forward_matmul(
     let one = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: 1 }),
+        Some(Op::ConstU32 { val: 1 }),
     );
 
     let tk = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Mut,
-        Some(Op::ConstU32 { value: 0 }),
+        Some(Op::ConstU32 { val: 0 }),
     );
 
     let tile_row = kernel.raw.def_var(
@@ -245,7 +245,7 @@ pub fn forward_matmul(
         let inner = kernel.raw.def_var(
             DType::Simple(SimpleDType::U32),
             ValueState::Mut,
-            Some(Op::ConstU32 { value: 0 }),
+            Some(Op::ConstU32 { val: 0 }),
         );
 
         kernel.push_for_loop(inner, tile_size, one, |kernel| {

@@ -158,7 +158,7 @@ fn emit_ops(kernel: &RawKernel, out: &mut String, pretty_print: bool) -> Result<
     for op in &kernel.ops {
         if let Op::DefineVar { id } = op
             && matches!(
-                kernel.values[*id].state,
+                kernel.vals[*id].state,
                 ValueState::Inline | ValueState::Masked
             )
         {
@@ -220,19 +220,19 @@ fn process_op(
             let _ = out.write_str(&render_val(*id, kernel)?);
         }
 
-        Op::ConstF64 { value } => {
-            let _ = write!(out, "{value}d");
+        Op::ConstF64 { val } => {
+            let _ = write!(out, "{val}d");
         }
 
-        Op::ConstF32 { value } => {
-            let _ = write!(out, "{value}f");
+        Op::ConstF32 { val } => {
+            let _ = write!(out, "{val}f");
         }
 
-        Op::ConstF16 { value } => {
-            let _ = write!(out, "{value}h");
+        Op::ConstF16 { val } => {
+            let _ = write!(out, "{val}h");
         }
 
-        Op::ConstBf16 { value: _ } => {
+        Op::ConstBf16 { val: _ } => {
             return Err(Error {
                 msg: "cannot evaluate constant `bf16`",
                 kind: ErrorKind::InvalidDType,
@@ -240,12 +240,12 @@ fn process_op(
             });
         }
 
-        Op::ConstU32 { value } => {
-            let _ = write!(out, "{value}u");
+        Op::ConstU32 { val } => {
+            let _ = write!(out, "{val}u");
         }
 
-        Op::ConstI32 { value } => {
-            let _ = write!(out, "{value}");
+        Op::ConstI32 { val } => {
+            let _ = write!(out, "{val}");
         }
 
         Op::ReadMeta { param, field } => {
@@ -476,91 +476,91 @@ fn process_op(
         Op::ParamStore {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] = {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamAccum {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] += {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamMul {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] *= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamDiv {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] /= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamSub {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] -= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamShl {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] <<= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
         Op::ParamShr {
             param,
             index,
-            value,
+            val,
         } => {
             let _ = write!(
                 out,
                 "param{param}[{}] >>= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
@@ -568,66 +568,66 @@ fn process_op(
             let _ = write!(out, "shared{mem}[{}]", render_val(*index, kernel)?);
         }
 
-        Op::SharedStore { mem, index, value } => {
+        Op::SharedStore { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] = {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedAccum { mem, index, value } => {
+        Op::SharedAccum { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] += {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedMul { mem, index, value } => {
+        Op::SharedMul { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] *= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedDiv { mem, index, value } => {
+        Op::SharedDiv { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] /= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedSub { mem, index, value } => {
+        Op::SharedSub { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] -= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedShl { mem, index, value } => {
+        Op::SharedShl { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] <<= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 
-        Op::SharedShr { mem, index, value } => {
+        Op::SharedShr { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] >>= {};",
                 render_val(*index, kernel)?,
-                render_val(*value, kernel)?
+                render_val(*val, kernel)?
             );
         }
 

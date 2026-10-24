@@ -296,73 +296,73 @@ impl LinkedKernel {
         ret
     }
 
-    pub fn param_store(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_store(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamStore {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_accum(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_accum(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamAccum {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_mul(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_mul(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamMul {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_div(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_div(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamDiv {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_sub(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_sub(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamSub {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_shl(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_shl(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamShl {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_shr(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_shr(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.register_param(param);
 
         self.raw.ops.push(Op::ParamShr {
             param,
             index,
-            value,
+            val,
         });
     }
 }
@@ -391,7 +391,7 @@ pub struct RawKernel {
 
     pub shared: Vec<SharedAlloc>,
 
-    pub values: Vec<Value>,
+    pub vals: Vec<Value>,
 
     pub ops: Vec<Op>,
 
@@ -477,67 +477,77 @@ impl RawKernel {
         ret
     }
 
-    pub fn param_store(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn load_matrix_sync(&mut self, frag: ParamId, index: ValueId, stride: ValueId) {
+        self.ops.push(Op::LoadMatrixSync { frag, index, stride });
+    }
+
+    pub fn store_matrix_sync(&mut self, frag: ParamId, index: ValueId, stride: ValueId) {
+        self.ops.push(Op::StoreMatrixSync { frag, index, stride });
+    }
+
+    pub fn fill_frag(&mut self, frag: ParamId, val: ValueId) {
+        self.ops.push(Op::FillFragment { frag, val });
+    }
+
+    pub fn param_store(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamStore {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_accum(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_accum(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamAccum {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_mul(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_mul(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamMul {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_div(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_div(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamDiv {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_sub(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_sub(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamSub {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_shl(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_shl(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamShl {
             param,
             index,
-            value,
+            val,
         });
     }
 
-    pub fn param_shr(&mut self, param: ParamId, index: ValueId, value: ValueId) {
+    pub fn param_shr(&mut self, param: ParamId, index: ValueId, val: ValueId) {
         self.ops.push(Op::ParamShr {
             param,
             index,
-            value,
+            val,
         });
     }
-}
 
-impl RawKernel {
     pub fn def_var(&mut self, dtype: DType, state: ValueState, init: Option<Op>) -> ValueId {
-        let id = self.values.len();
-        self.values.push(Value { state, dtype, init });
+        let id = self.vals.len();
+        self.vals.push(Value { state, dtype, init });
         if state != ValueState::Inline {
             self.ops.push(Op::DefineVar { id });
         }
@@ -548,63 +558,59 @@ impl RawKernel {
         let val = match op {
             Op::CopyVar { id } => id,
             _ => {
-                let dtype = self.values[id].dtype;
+                let dtype = self.vals[id].dtype;
                 self.def_var(dtype, ValueState::Inline, Some(op))
             }
         };
         self.ops.push(Op::OverwriteVar { id, val });
     }
 
-    pub fn fill_frag(&mut self, frag: ValueId, val: ValueId) {
-        self.ops.push(Op::FillFragment { frag, val });
-    }
-
     pub fn accum_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::AddAssign { id, val });
     }
 
     pub fn mul_assign_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::MulAssign { id, val });
     }
 
     pub fn div_assign_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::DivAssign { id, val });
     }
 
     pub fn sub_assign_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::SubAssign { id, val });
     }
 
     pub fn shl_assign_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::ShlAssign { id, val });
     }
 
     pub fn shr_assign_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
+        let dtype = self.vals[id].dtype;
         let val = self.def_var(dtype, ValueState::Inline, Some(op));
         self.ops.push(Op::ShrAssign { id, val });
     }
 
     pub fn update_var_state(&mut self, id: ValueId, state: ValueState) {
-        self.values[id].state = state;
+        self.vals[id].state = state;
     }
 
     pub fn update_var_dtype(&mut self, id: ValueId, dtype: DType) {
-        self.values[id].dtype = dtype;
+        self.vals[id].dtype = dtype;
     }
 
     pub fn update_var_init(&mut self, id: ValueId, init: Op) {
-        self.values[id].init = Some(init);
+        self.vals[id].init = Some(init);
     }
 
     pub fn new_shared(&mut self, dtype: SimpleDType, size: u32) -> SharedId {
@@ -629,32 +635,32 @@ impl RawKernel {
         self.ops.push(Op::Break);
     }
 
-    pub fn shared_store(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedStore { mem, index, value });
+    pub fn shared_store(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedStore { mem, index, val });
     }
 
-    pub fn shared_accum(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedAccum { mem, index, value });
+    pub fn shared_accum(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedAccum { mem, index, val });
     }
 
-    pub fn shared_mul(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedMul { mem, index, value });
+    pub fn shared_mul(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedMul { mem, index, val });
     }
 
-    pub fn shared_div(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedDiv { mem, index, value });
+    pub fn shared_div(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedDiv { mem, index, val });
     }
 
-    pub fn shared_sub(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedSub { mem, index, value });
+    pub fn shared_sub(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedSub { mem, index, val });
     }
 
-    pub fn shared_shl(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedShl { mem, index, value });
+    pub fn shared_shl(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedShl { mem, index, val });
     }
 
-    pub fn shared_shr(&mut self, mem: SharedId, index: ValueId, value: ValueId) {
-        self.ops.push(Op::SharedShr { mem, index, value });
+    pub fn shared_shr(&mut self, mem: SharedId, index: ValueId, val: ValueId) {
+        self.ops.push(Op::SharedShr { mem, index, val });
     }
 }
 

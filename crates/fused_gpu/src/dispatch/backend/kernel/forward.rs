@@ -109,7 +109,7 @@ pub fn lower_forward(
                 raw: RawKernel {
                     meta,
                     shared: Vec::new(),
-                    values: Vec::new(),
+                    vals: Vec::new(),
                     ops: Vec::new(),
                     block: Block::new([tile_size, tile_size, 1]),
                     root,
@@ -150,7 +150,7 @@ pub fn lower_forward(
             let mut base = kernel.raw.def_var(
                 DType::Simple(SimpleDType::U32),
                 ValueState::Immut,
-                Some(Op::ConstU32 { value: 0 }),
+                Some(Op::ConstU32 { val: 0 }),
             );
 
             let total = dims[0];
@@ -192,7 +192,7 @@ pub fn lower_forward(
             let tile_size = kernel.raw.def_var(
                 DType::Simple(SimpleDType::U32),
                 ValueState::Const,
-                Some(Op::ConstU32 { value: tile_size }),
+                Some(Op::ConstU32 { val: tile_size }),
             );
             let local_row = kernel.raw.def_var(
                 DType::Simple(SimpleDType::U32),
@@ -353,24 +353,24 @@ fn eval_node(
             kernel.register_param(param);
         }
 
-        GraphOp::ConstU32(value) => {
-            kernel.raw.overwrite_var(out, Op::ConstU32 { value });
+        GraphOp::ConstU32(val) => {
+            kernel.raw.overwrite_var(out, Op::ConstU32 { val });
         }
 
-        GraphOp::ConstI32(value) => {
-            kernel.raw.overwrite_var(out, Op::ConstI32 { value });
+        GraphOp::ConstI32(val) => {
+            kernel.raw.overwrite_var(out, Op::ConstI32 { val });
         }
 
-        GraphOp::ConstF32(value) => {
-            kernel.raw.overwrite_var(out, Op::ConstF32 { value });
+        GraphOp::ConstF32(val) => {
+            kernel.raw.overwrite_var(out, Op::ConstF32 { val });
         }
 
-        GraphOp::ConstF16(value) => {
-            kernel.raw.overwrite_var(out, Op::ConstF16 { value });
+        GraphOp::ConstF16(val) => {
+            kernel.raw.overwrite_var(out, Op::ConstF16 { val });
         }
 
-        GraphOp::ConstBf16(value) => {
-            kernel.raw.overwrite_var(out, Op::ConstBf16 { value });
+        GraphOp::ConstBf16(val) => {
+            kernel.raw.overwrite_var(out, Op::ConstBf16 { val });
         }
 
         GraphOp::Custom {
