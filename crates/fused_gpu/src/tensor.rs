@@ -64,14 +64,6 @@ pub struct Block {
     pub tile: [u32; 3],
 }
 
-impl Index<usize> for Block {
-    type Output = u32;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.dim3[index]
-    }
-}
-
 impl Index<Axis> for Block {
     type Output = u32;
 

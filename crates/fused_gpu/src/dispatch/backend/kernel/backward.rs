@@ -188,10 +188,12 @@ pub fn lower_backward(
 
                             DispatchOptions::ReqRow => {
                                 kernel.raw.block.dim3 = [1, shared_size, 1];
+                                kernel.raw.block.tile = [1, shared_size, 1];
                             }
 
                             DispatchOptions::ReqCol => {
                                 kernel.raw.block.dim3 = [shared_size, 1, 1];
+                                kernel.raw.block.tile = [shared_size, 1, 1];
                             }
                         }
                     }
@@ -331,7 +333,7 @@ fn eval_grad(
                 ctx: (),
             })?;
 
-            let mut deep = lower(
+            deepest.extend(lower(
                 eval_grad,
                 root,
                 input,
@@ -352,9 +354,7 @@ fn eval_grad(
                 params,
                 stable_iteration_space,
                 options,
-            )?;
-
-            deepest.append(&mut deep);
+            )?);
         } else {
             return Err(Error {
                 msg: "node output accepting no inputs",

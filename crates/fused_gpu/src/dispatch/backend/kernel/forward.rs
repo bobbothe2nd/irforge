@@ -250,10 +250,12 @@ pub fn lower_forward(
 
                         DispatchOptions::ReqRow => {
                             kernel.raw.block.dim3 = [1, shared_size, 1];
+                            kernel.raw.block.tile = [1, shared_size, 1];
                         }
 
                         DispatchOptions::ReqCol => {
                             kernel.raw.block.dim3 = [shared_size, 1, 1];
+                            kernel.raw.block.tile = [shared_size, 1, 1];
                         }
                     }
                 }
@@ -424,7 +426,7 @@ fn eval_node(
                 *stable_iteration_space = false;
             }
 
-            let mut deep = lower(
+            deepest.extend(lower(
                 eval_node,
                 root,
                 input,
@@ -445,9 +447,7 @@ fn eval_node(
                 params,
                 stable_iteration_space,
                 options,
-            )?;
-
-            deepest.append(&mut deep);
+            )?);
         }
     }
 

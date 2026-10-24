@@ -8,8 +8,7 @@ use crate::{
             codegen::{self, def_var_c, newline},
             kernel::RawKernel,
         },
-    },
-    errors::Error,
+    }, errors::Error,
 };
 
 use core::fmt::Write;
@@ -240,7 +239,7 @@ fn process_op(
             let _ = write!(
                 out,
                 "blockIdx.{axis} * {} + threadIdx.{axis}",
-                kernel.block[*axis as usize]
+                kernel.block[*axis]
             );
         }
 
@@ -624,6 +623,15 @@ fn process_op(
                 "fill_fragment({}, {});",
                 render_val(*frag, kernel)?,
                 render_val(*val, kernel)?
+            );
+        }
+
+        Op::Index { ptr, idx } => {
+            let _ = write!(
+                out,
+                "{}[{}]",
+                render_val(*ptr, kernel)?,
+                render_val(*idx, kernel)?,
             );
         }
 

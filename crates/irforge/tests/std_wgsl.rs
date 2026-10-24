@@ -266,7 +266,6 @@ fn div_const_softmax_forward_backward() {
     let grad_tensors = &saved_tensors.grad_tensors;
 
     ctx.download(out_tensor, &mut dst, 0).unwrap();
-    println!("{:?}", &dst[..64]);
     assert!(dst.iter().all(|x| *x == 2.0 + (1.0 / 32.0)));
 
     ctx.download(&grad_tensors[0], &mut dst, 0).unwrap();

@@ -1,10 +1,7 @@
 use crate::{
     dispatch::backend::{
-        Op, Param, ParamTy, SimpleDType, ValueId, ValueState,
-        codegen::{self, def_var_wgsl, newline, tab},
-        kernel::RawKernel,
-    },
-    errors::{Error, ErrorKind},
+        Axis, Op, Param, ParamTy, SimpleDType, ValueId, ValueState, codegen::{self, def_var_wgsl, newline, tab}, kernel::RawKernel,
+    }, errors::{Error, ErrorKind},
 };
 use core::fmt::Write;
 use std::{string::String, vec::Vec};
@@ -128,7 +125,7 @@ fn emit_entry(kernel: &RawKernel, out: &mut String, pretty_print: bool) -> Resul
     let _ = write!(
         out,
         "@compute @workgroup_size({}, ({}), ({})) ",
-        kernel.block[0], kernel.block[1], kernel.block[2]
+        kernel.block[Axis::X], kernel.block[Axis::Y], kernel.block[Axis::Z]
     );
 
     newline(pretty_print, out, 0);
