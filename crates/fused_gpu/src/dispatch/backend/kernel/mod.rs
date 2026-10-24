@@ -538,14 +538,25 @@ impl RawKernel {
     pub fn def_var(&mut self, dtype: DType, state: ValueState, init: Option<Op>) -> ValueId {
         let id = self.values.len();
         self.values.push(Value { state, dtype, init });
-        self.ops.push(Op::DefineVar { id });
+        if state != ValueState::Inline {
+            self.ops.push(Op::DefineVar { id });
+        }
         id
     }
 
     pub fn overwrite_var(&mut self, id: ValueId, op: Op) {
-        let dtype = self.values[id].dtype;
-        let val = self.def_var(dtype, ValueState::Inline, Some(op));
+        let val = match op {
+            Op::CopyVar { id } => id,
+            _ => {
+                let dtype = self.values[id].dtype;
+                self.def_var(dtype, ValueState::Inline, Some(op))
+            }
+        };
         self.ops.push(Op::OverwriteVar { id, val });
+    }
+
+    pub fn fill_frag(&mut self, frag: ValueId, val: ValueId) {
+        self.ops.push(Op::FillFragment { frag, val });
     }
 
     pub fn accum_var(&mut self, id: ValueId, op: Op) {

@@ -43,7 +43,7 @@ fn mul_add_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -134,7 +134,7 @@ fn matmul_sub_softmax_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -227,7 +227,7 @@ fn div_const_softmax_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -316,7 +316,7 @@ fn matmul_add_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -443,7 +443,7 @@ fn matmul_chain3_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -588,7 +588,7 @@ fn matmul_sub_forward_backward() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

@@ -95,7 +95,7 @@ fn gen_args(out: &mut String, params: &[Param]) {
 
         let _ = write!(
             out,
-            "{}{} *param{}",
+            "{}{}* __restrict__ param{}",
             read_only,
             param.dtype.fmt_c(),
             param.pid

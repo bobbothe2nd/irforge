@@ -52,7 +52,7 @@ impl GpuKernelBackend for () {
     fn block(&self) -> Block {
         Block {
             dim3: [0; 3],
-            calc_grid: None,
+            tile: [0; 3],
         }
     }
 
@@ -632,8 +632,16 @@ impl Metadata {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DispatchOptions {
+    /// Require no special dispatch (used for most)
     Any,
+
+    /// This node does **N**ot **R**ea**d** **G**lobal **Id**entity (used for WMMA matmul)
+    NRdGid,
+
+    /// Require rows to remain consistent for iteration by column
     ReqRow,
+
+    /// Require columns to remain consistent for iteration by row (used for softmax)
     ReqCol,
 }
 
@@ -988,7 +996,7 @@ fn check_shapes(graph: &Graph, errors: &mut Vec<Error<GraphErrorContext>>) {
 #[derive(Debug)]
 pub struct Graph {
     pub nodes: Vec<Node>,
-    pub target: TargetCompilationOptions,
+    pub target: Option<TargetCompilationOptions>,
     pub(crate) loss: LossType,
     pub(crate) optim: OptimType,
 }
@@ -999,10 +1007,7 @@ impl Graph {
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
         Self {
             nodes: Vec::new(),
-            target: TargetCompilationOptions {
-                flags: TargetFlags::empty(),
-                subgroup_size: None,
-            },
+            target: None,
             loss,
             optim,
         }

@@ -5,11 +5,11 @@ use fused_gpu::{
             DType, Graph, NodeId, Op, Param, ParamId, SimpleDType, ValueId, ValueState,
             kernel::{LinkedKernel, NodeInput},
         },
-    },
-    errors::Error,
+    }, errors::{Error, ErrorKind},
 };
 use std::vec::Vec;
 
+#[allow(unused)]
 pub fn forward_matmul(
     eval_node: impl Fn(
         NodeId,
@@ -58,263 +58,55 @@ pub fn forward_matmul(
     stable_iteration_space: &mut bool,
     options: &CompilationOptions,
 ) -> Result<Vec<NodeId>, Error> {
+    let subgroup_size = options.target.subgroup_size.ok_or(Error {
+        msg: "attempted WMMA matmul with unknown subgroup size",
+        kind: ErrorKind::InternalError,
+        ctx: (),
+    })?.get() as u32;
+    let block = [subgroup_size / 8, 8, 1];
+    kernel.raw.block.dim3 = block;
+
     let mut deepest = Vec::new();
 
-    let a_tile = kernel.raw.new_shared(dtype, shared_size);
-    let b_tile = kernel.raw.new_shared(dtype, shared_size);
-
-    let one = kernel.raw.def_var(
+    let zero_u = kernel.raw.def_var(
         DType::Simple(SimpleDType::U32),
         ValueState::Inline,
-        Some(Op::ConstU32 { value: 1 }),
-    );
-
-    let tk = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
-        ValueState::Mut,
         Some(Op::ConstU32 { value: 0 }),
     );
-
-    let tile_row = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
+    let zero_f = kernel.raw.def_var(
+        DType::Simple(dtype),
         ValueState::Inline,
-        Some(Op::Mul {
-            a: local_row,
-            b: tile_size,
-        }),
+        Some(Op::ConstF32 { value: 0.0 }),
     );
-    let shared_idx = kernel.raw.def_var(
-        DType::Simple(SimpleDType::U32),
+
+    let frag_a = kernel.raw.def_var(
+        DType::MmaA { dtype, m: shared_size, n: shared_size, k: shared_size },
         ValueState::Mut,
-        Some(Op::Add {
-            a: tile_row,
-            b: local_col,
-        }),
+        None,
+    );
+    let frag_b = kernel.raw.def_var(
+        DType::MmaB { dtype, m: shared_size, n: shared_size, k: shared_size },
+        ValueState::Mut,
+        None,
+    );
+    let frag_c = kernel.raw.def_var(
+        DType::MmaAccum { dtype, m: shared_size, n: shared_size, k: shared_size },
+        ValueState::Mut,
+        None,
+    );
+
+    kernel.raw.fill_frag(frag_c, zero_f);
+
+    let tk = kernel.raw.def_var(
+        DType::Simple(SimpleDType::F32),
+        ValueState::Mut,
+        Some(Op::ConstU32 { value: 0 }),
     );
 
     let mut a_deepest = Vec::new();
     let mut b_deepest = Vec::new();
 
     kernel.push_for_loop(tk, k, tile_size, |kernel| {
-        let a_k = kernel.raw.def_var(
-            DType::Simple(SimpleDType::U32),
-            ValueState::Immut,
-            Some(Op::Add {
-                a: tk,
-                b: local_col,
-            }),
-        );
-
-        let b_k = kernel.raw.def_var(
-            DType::Simple(SimpleDType::U32),
-            ValueState::Immut,
-            Some(Op::Add {
-                a: tk,
-                b: local_row,
-            }),
-        );
-
-        let a_idx = if swap_a {
-            let a_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul { a: a_k, b: m }),
-            );
-            let a_col = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Add { a: a_row, b: row }),
-            );
-            kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add { a: a_col, b: base }),
-            )
-        } else {
-            let a_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul { a: row, b: k }),
-            );
-            let a_col = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Add { a: a_row, b: a_k }),
-            );
-            kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add { a: a_col, b: base }),
-            )
-        };
-
-        let a_val = kernel.raw.def_var(
-            DType::Simple(dtype),
-            ValueState::Mut,
-            Some(dtype.constant_float(0.0)?),
-        );
-
-        a_deepest = eval_node(
-            root,
-            input,
-            a_node,
-            a_val,
-            resolved,
-            graph,
-            node_params,
-            saved_params,
-            kernel,
-            a_idx,
-            base,
-            local_row,
-            local_col,
-            shared_size,
-            tile_size,
-            params,
-            stable_iteration_space,
-            options,
-        )?;
-
-        kernel.raw.shared_store(a_tile, shared_idx, a_val);
-
-        let b_idx = if swap_b {
-            let b_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul { a: col, b: k }),
-            );
-            let b_col = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Add { a: b_row, b: b_k }),
-            );
-            kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add { a: b_col, b: base }),
-            )
-        } else {
-            let b_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul { a: b_k, b: n }),
-            );
-            let b_col = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Add { a: b_row, b: col }),
-            );
-            kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add { a: b_col, b: base }),
-            )
-        };
-
-        let b_val = kernel.raw.def_var(
-            DType::Simple(dtype),
-            ValueState::Mut,
-            Some(dtype.constant_float(0.0)?),
-        );
-
-        b_deepest = eval_node(
-            root,
-            input,
-            b_node,
-            b_val,
-            resolved,
-            graph,
-            node_params,
-            saved_params,
-            kernel,
-            b_idx,
-            base,
-            local_row,
-            local_col,
-            shared_size,
-            tile_size,
-            params,
-            stable_iteration_space,
-            options,
-        )?;
-
-        kernel.raw.shared_store(b_tile, shared_idx, b_val);
-
-        kernel.raw.push_barrier();
-
-        let inner = kernel.raw.def_var(
-            DType::Simple(SimpleDType::U32),
-            ValueState::Mut,
-            Some(Op::ConstU32 { value: 0 }),
-        );
-
-        kernel.push_for_loop(inner, tile_size, one, |kernel| {
-            let a_s_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul {
-                    a: local_row,
-                    b: tile_size,
-                }),
-            );
-            let a_s_idx = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add {
-                    a: a_s_row,
-                    b: inner,
-                }),
-            );
-
-            let a_val = kernel.raw.def_var(
-                DType::Simple(dtype),
-                ValueState::Immut,
-                Some(Op::SharedLoad {
-                    mem: a_tile,
-                    index: a_s_idx,
-                }),
-            );
-
-            let b_s_row = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Inline,
-                Some(Op::Mul {
-                    a: inner,
-                    b: tile_size,
-                }),
-            );
-            let b_s_idx = kernel.raw.def_var(
-                DType::Simple(SimpleDType::U32),
-                ValueState::Immut,
-                Some(Op::Add {
-                    a: b_s_row,
-                    b: local_col,
-                }),
-            );
-
-            let b_val = kernel.raw.def_var(
-                DType::Simple(dtype),
-                ValueState::Immut,
-                Some(Op::SharedLoad {
-                    mem: b_tile,
-                    index: b_s_idx,
-                }),
-            );
-
-            kernel.raw.overwrite_var(
-                out,
-                Op::Fma {
-                    a: a_val,
-                    b: b_val,
-                    c: out,
-                },
-            );
-
-            Ok(())
-        })?;
-
-        kernel.raw.push_barrier();
-
         Ok(())
     })?;
 

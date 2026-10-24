@@ -183,7 +183,8 @@ pub fn lower_backward(
 
                     if let GraphOp::Custom { valid_dispatch, .. } = node.op {
                         match valid_dispatch {
-                            DispatchOptions::Any => {}
+                            DispatchOptions::Any
+                            | DispatchOptions::NRdGid => {}
 
                             DispatchOptions::ReqRow => {
                                 kernel.raw.block.dim3 = [1, shared_size, 1];

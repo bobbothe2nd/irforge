@@ -25,26 +25,26 @@ pub fn build_dims(shape: &[MetaId], meta: &[u32]) -> Vec<u32> {
 
 #[inline]
 #[must_use]
-pub fn calc_grid_raw(shape: &[u32], block: [u32; 3]) -> [u32; 3] {
+pub fn calc_grid_raw(shape: &[u32], tile: [u32; 3]) -> [u32; 3] {
     let out_rank = shape.len();
 
-    if block[0] == block[1] {
+    if tile[0] == tile[1] {
         [
-            shape[out_rank - 1].div_ceil(block[0]),
-            shape[out_rank - 2].div_ceil(block[1]),
+            shape[out_rank - 1].div_ceil(tile[0]),
+            shape[out_rank - 2].div_ceil(tile[1]),
             shape[..out_rank - 2]
                 .iter()
                 .product::<u32>()
-                .div_ceil(block[2]),
+                .div_ceil(tile[2]),
         ]
-    } else if block[0] == 1 {
+    } else if tile[0] == 1 {
         [
             1,
             shape[out_rank - 1],
             shape[..out_rank - 2]
                 .iter()
                 .product::<u32>()
-                .div_ceil(block[2]),
+                .div_ceil(tile[2]),
         ]
     } else {
         [
@@ -53,7 +53,7 @@ pub fn calc_grid_raw(shape: &[u32], block: [u32; 3]) -> [u32; 3] {
             shape[..out_rank - 2]
                 .iter()
                 .product::<u32>()
-                .div_ceil(block[2]),
+                .div_ceil(tile[2]),
         ]
     }
 }
@@ -61,7 +61,7 @@ pub fn calc_grid_raw(shape: &[u32], block: [u32; 3]) -> [u32; 3] {
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct Block {
     pub dim3: [u32; 3],
-    pub calc_grid: Option<fn(&[u32], [u32; 3]) -> [u32; 3]>,
+    pub tile: [u32; 3],
 }
 
 impl Index<usize> for Block {
@@ -83,11 +83,11 @@ impl Index<Axis> for Block {
 impl Block {
     pub const ZERO3: Self = Self {
         dim3: [0; 3],
-        calc_grid: None,
+        tile: [0; 3]
     };
     pub const UNIT: Self = Self {
         dim3: [1; 3],
-        calc_grid: None,
+        tile: [1; 3]
     };
 
     #[inline]
@@ -95,17 +95,20 @@ impl Block {
     pub const fn new(dim3: [u32; 3]) -> Self {
         Self {
             dim3,
-            calc_grid: None,
+            tile: dim3,
         }
     }
 
     #[inline]
     #[must_use]
     pub fn calc_grid(&self, shape: &[u32]) -> [u32; 3] {
-        self.calc_grid.map_or_else(
-            || calc_grid_raw(shape, self.dim3),
-            |calc_grid| (calc_grid)(shape, self.dim3),
-        )
+        let tile = if self.tile == [0; 3] {
+            self.dim3
+        } else {
+            self.tile
+        };
+
+        calc_grid_raw(shape, tile)
     }
 }
 

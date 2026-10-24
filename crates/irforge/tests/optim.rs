@@ -40,7 +40,7 @@ fn mul_add_optim() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };
@@ -139,7 +139,7 @@ fn mul_add_separate_optim() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

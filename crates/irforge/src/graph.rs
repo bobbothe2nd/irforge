@@ -52,11 +52,11 @@ impl Graph {
 
     #[inline]
     pub fn set_target(&mut self, target: TargetCompilationOptions) {
-        self.inner_mut().target = target;
+        self.inner_mut().target = Some(target);
     }
 
     #[inline]
-    pub fn get_target(&self) -> TargetCompilationOptions {
+    pub fn get_target(&self) -> Option<TargetCompilationOptions> {
         self.inner().target
     }
 

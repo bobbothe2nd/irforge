@@ -91,7 +91,7 @@ fn main() {
     graph.validate(meta).unwrap();
 
     let options = CompilationOptions {
-        target: graph.get_target(),
+        target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
         debug: DebugCompilationOptions::empty(),
     };

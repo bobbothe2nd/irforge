@@ -282,9 +282,14 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     let last_idx = shape.len() - 1;
     shape[last_idx] = graph.nodes[b].shape[last_idx];
 
+    let is_wmma = graph
+        .target
+        .map(|target| target.flags.contains(TargetFlags::LIN_ACC) && target.subgroup_size.is_some())
+        .unwrap_or_default();
+
     graph.push_node(Node {
         op: GraphOp::Custom {
-            lower: if graph.target.flags.contains(TargetFlags::LIN_ACC) {
+            lower: if is_wmma {
                 wmma_matmul_recursive
             } else {
                 generic_matmul_recursive
@@ -292,13 +297,17 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
             arity: 2,
             need_dims: true,
             stable_iter: false,
-            auto_save: true,
-            computes_gid: true,
-            prefer_separate: false,
+            auto_save: !is_wmma,
+            computes_gid: !is_wmma,
+            prefer_separate: true,
             save,
             valid_shape,
             display: |inputs| format!("{:?} @ {:?}", inputs[0], inputs[1]),
-            valid_dispatch: DispatchOptions::Any,
+            valid_dispatch: if is_wmma {
+                DispatchOptions::NRdGid
+            } else {
+                DispatchOptions::Any
+            },
         },
         inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
