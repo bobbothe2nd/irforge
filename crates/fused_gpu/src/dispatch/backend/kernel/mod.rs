@@ -1,13 +1,9 @@
 use crate::{
     dispatch::{
-        CompilationOptions,
-        backend::{
-            DType, Graph, GraphOp, MetaId, Metadata, NodeId, Op, Param, ParamId, SharedAlloc,
-            SharedId, SimpleDType, Value, ValueId, ValueState,
+        CompilationOptions, backend::{
+            DType, Graph, GraphOp, MetaId, Metadata, NodeId, Op, Param, ParamId, SharedAlloc, SharedId, SimpleDType, TensorLayout, Value, ValueId, ValueState,
         },
-    },
-    errors::{Error, ErrorKind},
-    tensor::Block,
+    }, errors::{Error, ErrorKind}, tensor::Block,
 };
 use std::vec::Vec;
 
@@ -481,12 +477,16 @@ impl RawKernel {
         self.ops.push(Op::LoadMatrixSync { param, frag, index, stride });
     }
 
-    pub fn store_matrix_sync(&mut self, param: ParamId, frag: ValueId, index: ValueId, stride: ValueId) {
-        self.ops.push(Op::StoreMatrixSync { param, frag, index, stride });
+    pub fn store_matrix_sync(&mut self, param: ParamId, frag: ValueId, index: ValueId, stride: ValueId, layout: TensorLayout) {
+        self.ops.push(Op::StoreMatrixSync { param, frag, index, stride, layout });
     }
 
     pub fn fill_frag(&mut self, frag: ParamId, val: ValueId) {
         self.ops.push(Op::FillFragment { frag, val });
+    }
+
+    pub fn mma_sync(&mut self, acc: ValueId, a: ValueId, b: ValueId, c: ValueId) {
+        self.ops.push(Op::MmaSync { acc, a, b, c });
     }
 
     pub fn param_store(&mut self, param: ParamId, index: ValueId, val: ValueId) {

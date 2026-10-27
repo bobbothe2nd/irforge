@@ -1,5 +1,5 @@
 use crate::dispatch::backend::{
-    Axis, DType, MetaId, ParamId, SharedId, ValueId, ValueState, kernel::RawKernel,
+    Axis, DType, MetaId, ParamId, SharedId, TensorLayout, ValueId, ValueState, kernel::RawKernel,
 };
 
 #[non_exhaustive]
@@ -326,6 +326,7 @@ pub enum Op {
         index: ValueId,
         stride: ValueId,
         frag: ValueId,
+        layout: TensorLayout,
     },
 
     /// Tensor/matrix core requires `TargetCompilationOptions::LIN_ACC`

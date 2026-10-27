@@ -666,13 +666,15 @@ fn process_op(
             index,
             frag,
             stride,
+            layout,
         } => {
             let _ = write!(
                 out,
-                "store_matrix_sync(param{param} +{}, {}, {}, mem_row_major);",
+                "store_matrix_sync(param{param} +{}, {}, {}, mem_{});",
                 render_val(*index, kernel)?,
                 render_val(*frag, kernel)?,
-                render_val(*stride, kernel)?
+                render_val(*stride, kernel)?,
+                layout.fmt_wmma(),
             );
         }
     }

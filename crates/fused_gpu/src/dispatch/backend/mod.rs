@@ -245,7 +245,7 @@ pub type ValueId = usize;
 
 /// Data type used in kernel IR.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DType {
     Simple(SimpleDType),
     MmaA {
@@ -253,12 +253,14 @@ pub enum DType {
         m: u32,
         n: u32,
         k: u32,
+        layout: TensorLayout,
     },
     MmaB {
         dtype: SimpleDType,
         m: u32,
         n: u32,
         k: u32,
+        layout: TensorLayout,
     },
     MmaAccum {
         dtype: SimpleDType,
@@ -274,8 +276,8 @@ impl DType {
     pub const fn bits(self) -> usize {
         match self {
             Self::Simple(dtype) => dtype.bits(),
-            Self::MmaA { dtype, m, n, k }
-            | Self::MmaB { dtype, m, n, k }
+            Self::MmaA { dtype, m, n, k, layout: _ }
+            | Self::MmaB { dtype, m, n, k, layout: _ }
             | Self::MmaAccum { dtype, m, n, k } => dtype.bits() * (m * n * k) as usize,
         }
     }
@@ -285,8 +287,8 @@ impl DType {
     pub const fn size(self) -> usize {
         match self {
             Self::Simple(dtype) => dtype.size(),
-            Self::MmaA { dtype, m, n, k }
-            | Self::MmaB { dtype, m, n, k }
+            Self::MmaA { dtype, m, n, k, layout: _ }
+            | Self::MmaB { dtype, m, n, k, layout: _ }
             | Self::MmaAccum { dtype, m, n, k } => dtype.size() * (m * n * k) as usize,
         }
     }
@@ -338,7 +340,7 @@ impl DType {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimpleDType {
     F64,
     F32,
@@ -432,21 +434,27 @@ impl SimpleDType {
 }
 
 /// Parameter type used in kernel IR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Param {
     pub dtype: SimpleDType,
     pub ty: ParamTy,
     pub pid: ParamId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ParamTy {
     Uniform,
     ReadWrite,
     ReadOnly,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TensorLayout {
+    RowMajor,
+    ColMajor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SharedAlloc {
     pub dtype: SimpleDType,
     pub size: u32,
@@ -461,7 +469,7 @@ pub struct Value {
 }
 
 /// Value state type that defines a val.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueState {
     Mut,
     Immut,
@@ -472,7 +480,7 @@ pub enum ValueState {
 
 /// Axis type used in kernel IR.
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Axis {
     /// x-axis (0)
     X = 0,
@@ -631,7 +639,7 @@ impl Metadata {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DispatchOptions {
     /// Require no special dispatch (used for most)
     Any,

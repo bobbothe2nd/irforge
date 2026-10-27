@@ -1,8 +1,7 @@
 use core::fmt::{self, Display, Write};
 
 use crate::{
-    dispatch::backend::{Axis, DType, Op, SimpleDType, ValueId, ValueState, kernel::RawKernel},
-    errors::{Error, ErrorKind},
+    dispatch::backend::{Axis, DType, Op, SimpleDType, TensorLayout, ValueId, ValueState, kernel::RawKernel}, errors::{Error, ErrorKind},
 };
 
 impl SimpleDType {
@@ -58,13 +57,15 @@ impl DType {
     pub fn fmt_c(self) -> String {
         match self {
             Self::Simple(dtype) => dtype.fmt_c().to_string(),
-            Self::MmaA { dtype, m, n, k } => format!(
-                "fragment<matrix_a, {m}, {n}, {k}, {}, row_major>",
-                dtype.fmt_c()
+            Self::MmaA { dtype, m, n, k, layout } => format!(
+                "fragment<matrix_a, {m}, {n}, {k}, {}, {}>",
+                dtype.fmt_c(),
+                layout.fmt_wmma(),
             ),
-            Self::MmaB { dtype, m, n, k } => format!(
-                "fragment<matrix_b, {m}, {n}, {k}, {}, col_major>",
-                dtype.fmt_c()
+            Self::MmaB { dtype, m, n, k, layout } => format!(
+                "fragment<matrix_b, {m}, {n}, {k}, {}, {}>",
+                dtype.fmt_c(),
+                layout.fmt_wmma(),
             ),
             Self::MmaAccum { dtype, m, n, k } => {
                 format!("fragment<accumulator, {m}, {n}, {k}, {}>", dtype.fmt_c())
@@ -124,6 +125,17 @@ impl Axis {
             Self::X => '0',
             Self::Y => '1',
             Self::Z => '2',
+        }
+    }
+}
+
+impl TensorLayout {
+    #[inline]
+    #[must_use]
+    pub const fn fmt_wmma(self) -> &'static str {
+        match self {
+            Self::ColMajor => "col_major",
+            Self::RowMajor => "row_major",
         }
     }
 }

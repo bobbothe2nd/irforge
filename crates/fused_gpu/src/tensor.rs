@@ -87,7 +87,7 @@ impl Block {
     pub const fn new(dim3: [u32; 3]) -> Self {
         Self {
             dim3,
-            tile: dim3,
+            tile: [0; 3],
         }
     }
 
