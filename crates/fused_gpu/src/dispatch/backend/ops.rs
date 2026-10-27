@@ -315,15 +315,17 @@ pub enum Op {
     /// Tensor/matrix core requires `TargetCompilationOptions::LIN_ACC`
     LoadMatrixSync {
         frag: ValueId,
+        param: ParamId,
         index: ValueId,
         stride: ValueId,
     },
 
     /// Tensor/matrix core requires `TargetCompilationOptions::LIN_ACC`
     StoreMatrixSync {
-        frag: ValueId,
+        param: ParamId,
         index: ValueId,
         stride: ValueId,
+        frag: ValueId,
     },
 
     /// Tensor/matrix core requires `TargetCompilationOptions::LIN_ACC`
@@ -416,11 +418,13 @@ impl Op {
                 frag,
                 index,
                 stride,
+                ..
             }
             | Self::StoreMatrixSync {
                 frag,
                 index,
                 stride,
+                ..
             } => index == &value_id || frag == &value_id || stride == &value_id,
             Self::FillFragment { frag, val } => frag == &value_id || val == &value_id,
         }
@@ -525,6 +529,7 @@ impl Op {
                 frag,
                 index,
                 stride,
+                ..
             } => {
                 replace_if_eq(frag, old_id, new_id);
                 replace_if_eq(index, old_id, new_id);
@@ -534,6 +539,7 @@ impl Op {
                 index,
                 frag,
                 stride,
+                ..
             } => {
                 replace_if_eq(index, old_id, new_id);
                 replace_if_eq(frag, old_id, new_id);
@@ -636,11 +642,13 @@ impl Op {
                 frag,
                 index,
                 stride,
+                ..
             }
             | Self::StoreMatrixSync {
                 frag,
                 index,
                 stride,
+                ..
             } => not_mut(*frag, kernel) && not_mut(*index, kernel) && not_mut(*stride, kernel),
             Self::FillFragment { frag, val } => not_mut(*frag, kernel) && not_mut(*val, kernel),
             Self::Barrier

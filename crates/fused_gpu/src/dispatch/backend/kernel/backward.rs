@@ -148,7 +148,6 @@ pub fn lower_backward(
 
                 let new_roots = eval_grad(
                     root,
-                    input,
                     &NodeInput::Node(root),
                     upstream,
                     &mut resolved,
@@ -231,7 +230,6 @@ pub fn lower_backward(
 
 fn eval_grad(
     root: NodeId,
-    input: NodeId,
     node_id: &NodeInput,
     upstream: ValueId,
     resolved: &mut Vec<NodeId>,
@@ -336,7 +334,6 @@ fn eval_grad(
             deepest.extend(lower(
                 eval_grad,
                 root,
-                input,
                 resolved,
                 Some(edge as u8),
                 user,

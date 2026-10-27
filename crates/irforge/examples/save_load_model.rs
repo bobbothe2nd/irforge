@@ -8,7 +8,7 @@ use irforge::{
 };
 use rand_core::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::time::Instant;
+use std::{fs::File, time::Instant};
 
 const PATH: &str = "data/v2f32_test.bpat";
 
@@ -16,6 +16,8 @@ const ITERS: usize = 256;
 const EPOCHS_TO_SAVE: usize = 32;
 
 const LR: f32 = 1e-10;
+
+use simplelog::*;
 
 fn main() {
     const M: u32 = 768;
@@ -29,7 +31,13 @@ fn main() {
     const D_VAL: f32 = 0.007;
     const E_VAL: f32 = 0.008;
 
-    stderrlog::new().verbosity(log::Level::Info).init().unwrap();
+    CombinedLogger::init(
+        vec![
+            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Info, Config::default(), File::create("model.log").unwrap()),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("model.log").unwrap()),
+        ]
+    ).unwrap();
 
     let mut meta = MetaBuilder::new();
     let m = meta.new_field();
@@ -76,7 +84,7 @@ fn main() {
     let options = CompilationOptions {
         target: graph.get_target().unwrap(),
         opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
+        debug: DebugCompilationOptions::PRETTY_PRINT_IR,
     };
 
     let meta_binding = ctx.alloc_meta(&meta_binding);

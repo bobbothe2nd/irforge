@@ -694,7 +694,6 @@ pub enum GraphOp {
         lower: fn(
             fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -712,7 +711,6 @@ pub enum GraphOp {
                 &mut bool,
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
-            NodeId,
             NodeId,
             &mut Vec<NodeId>,
             Option<u8>,

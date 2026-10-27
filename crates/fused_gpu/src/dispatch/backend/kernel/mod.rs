@@ -477,12 +477,12 @@ impl RawKernel {
         ret
     }
 
-    pub fn load_matrix_sync(&mut self, frag: ParamId, index: ValueId, stride: ValueId) {
-        self.ops.push(Op::LoadMatrixSync { frag, index, stride });
+    pub fn load_matrix_sync(&mut self, param: ParamId, frag: ValueId, index: ValueId, stride: ValueId) {
+        self.ops.push(Op::LoadMatrixSync { param, frag, index, stride });
     }
 
-    pub fn store_matrix_sync(&mut self, frag: ParamId, index: ValueId, stride: ValueId) {
-        self.ops.push(Op::StoreMatrixSync { frag, index, stride });
+    pub fn store_matrix_sync(&mut self, param: ParamId, frag: ValueId, index: ValueId, stride: ValueId) {
+        self.ops.push(Op::StoreMatrixSync { param, frag, index, stride });
     }
 
     pub fn fill_frag(&mut self, frag: ParamId, val: ValueId) {
@@ -555,12 +555,9 @@ impl RawKernel {
     }
 
     pub fn overwrite_var(&mut self, id: ValueId, op: Op) {
-        let val = match op {
-            Op::CopyVar { id } => id,
-            _ => {
-                let dtype = self.vals[id].dtype;
-                self.def_var(dtype, ValueState::Inline, Some(op))
-            }
+        let val = if let Op::CopyVar { id } = op { id } else {
+            let dtype = self.vals[id].dtype;
+            self.def_var(dtype, ValueState::Inline, Some(op))
         };
         self.ops.push(Op::OverwriteVar { id, val });
     }

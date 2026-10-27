@@ -13,7 +13,6 @@ use std::vec::Vec;
 pub fn forward_matmul(
     eval_node: impl Fn(
         NodeId,
-        NodeId,
         &NodeInput,
         ValueId,
         &mut Vec<NodeId>,
@@ -33,13 +32,13 @@ pub fn forward_matmul(
     ) -> Result<Vec<NodeId>, Error>,
     dtype: SimpleDType,
     root: NodeId,
-    input: NodeId,
     resolved: &mut Vec<NodeId>,
     m: ValueId,
     n: ValueId,
     k: ValueId,
     swap_a: bool,
     swap_b: bool,
+    _node_id: NodeId,
     a_node: &NodeInput,
     b_node: &NodeInput,
     graph: &Graph,
@@ -156,7 +155,6 @@ pub fn forward_matmul(
 
         a_deepest = eval_node(
             root,
-            input,
             a_node,
             a_val,
             resolved,
@@ -219,7 +217,6 @@ pub fn forward_matmul(
 
         b_deepest = eval_node(
             root,
-            input,
             b_node,
             b_val,
             resolved,

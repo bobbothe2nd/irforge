@@ -19,7 +19,6 @@ macro_rules! impl_lower {
         pub fn $name(
             eval_node: impl Fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -38,7 +37,6 @@ macro_rules! impl_lower {
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
             root: NodeId,
-            input: NodeId,
             resolved: &mut Vec<NodeId>,
             backwardness: Option<u8>,
             node_id: NodeId,
@@ -162,13 +160,13 @@ macro_rules! impl_lower {
                 eval_node,
                 node.dtype,
                 root,
-                input,
                 resolved,
                 m,
                 n,
                 k,
                 transpose_a,
                 transpose_b,
+                node_id,
                 &a_node,
                 &b_node,
                 graph,
@@ -192,7 +190,6 @@ macro_rules! impl_lower {
 }
 
 impl_lower!(generic_matmul_recursive generic);
-
 impl_lower!(wmma_matmul_recursive wmma);
 
 pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {

@@ -637,12 +637,13 @@ fn process_op(
 
         Op::LoadMatrixSync {
             frag,
+            param,
             index,
             stride,
         } => {
             let _ = write!(
                 out,
-                "load_matrix_sync({}, {}, {});",
+                "load_matrix_sync({}, param{param} + {}, {});",
                 render_val(*frag, kernel)?,
                 render_val(*index, kernel)?,
                 render_val(*stride, kernel)?
@@ -661,13 +662,14 @@ fn process_op(
         }
 
         Op::StoreMatrixSync {
+            param,
             index,
             frag,
             stride,
         } => {
             let _ = write!(
                 out,
-                "store_matrix_sync({}, {}, {}, mem_row_major);",
+                "store_matrix_sync(param{param} +{}, {}, {}, mem_row_major);",
                 render_val(*index, kernel)?,
                 render_val(*frag, kernel)?,
                 render_val(*stride, kernel)?

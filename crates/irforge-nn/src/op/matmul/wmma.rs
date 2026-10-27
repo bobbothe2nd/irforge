@@ -1,17 +1,14 @@
 use fused_gpu::{
     dispatch::{
-        CompilationOptions,
-        backend::{
-            DType, Graph, NodeId, Op, Param, ParamId, SimpleDType, ValueId, ValueState,
-            kernel::{LinkedKernel, NodeInput},
+        CompilationOptions, backend::{
+            DType, Graph, NodeId, Op, Param, ParamId, SimpleDType, ValueId, ValueState, kernel::{LinkedKernel, NodeInput},
         },
     }, errors::{Error, ErrorKind},
 };
 use std::vec::Vec;
 
 pub fn forward_matmul(
-    _e: impl Fn(
-        NodeId,
+    _eval_node: impl Fn(
         NodeId,
         &NodeInput,
         ValueId,
@@ -32,21 +29,21 @@ pub fn forward_matmul(
     ) -> Result<Vec<NodeId>, Error>,
     dtype: SimpleDType,
     _root: NodeId,
-    _input: NodeId,
     _resolved: &mut Vec<NodeId>,
     _m: ValueId,
     n: ValueId,
     k: ValueId,
     _swap_a: bool,
     _swap_b: bool,
-    _a_node: &NodeInput,
-    _b_node: &NodeInput,
+    node_id: NodeId,
+    a_node: &NodeInput,
+    b_node: &NodeInput,
     _graph: &Graph,
     _out: ValueId,
-    _node_params: &[Option<ParamId>],
+    node_params: &[Option<ParamId>],
     _saved_params: &[Option<ParamId>],
     kernel: &mut LinkedKernel,
-    _base: ValueId,
+    base: ValueId,
     _row: ValueId,
     _col: ValueId,
     _local_row: ValueId,
@@ -64,6 +61,28 @@ pub fn forward_matmul(
     })?.get() as u32;
     let block = [subgroup_size / 8, 8, 1];
     kernel.raw.block.dim3 = block;
+
+    let a = match a_node {
+        NodeInput::Param { param, .. } => *param,
+        NodeInput::Node(node_id) => node_params[*node_id].ok_or(Error {
+            msg: "expected a_node mapping to param",
+            kind: ErrorKind::UnresolvedInput,
+            ctx: (),
+        })?,
+    };
+    let b = match b_node {
+        NodeInput::Param { param, .. } => *param,
+        NodeInput::Node(node_id) => node_params[*node_id].ok_or(Error {
+            msg: "expected a_node mapping to param",
+            kind: ErrorKind::UnresolvedInput,
+            ctx: (),
+        })?,
+    };
+    let c = node_params[node_id].ok_or(Error {
+        msg: "expected a_node mapping to param",
+        kind: ErrorKind::UnresolvedOutput,
+        ctx: (),
+    })?;
 
     let tile_width = options.opt.tile_size;
 
@@ -109,26 +128,27 @@ pub fn forward_matmul(
         Some(Op::ConstU32 { val: 0 }),
     );
 
-    // let a_deepest = Vec::new();
-    // let b_deepest = Vec::new();
-
     kernel.push_for_loop(tk, k, tile_size, |kernel| {
-        let a_stride = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: k, b: tile_m }));
-        let b_stride = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: tk, b: n }));
+        let a_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: k, b: tile_m }));
+        let a_col = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: a_row, b: tk }));
+        let a_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: a_col, b: base }));
 
-        let a_off = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: a_stride, b: tk }));
-        let b_off = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: b_stride, b: tile_n }));
+        kernel.raw.load_matrix_sync(a, frag_a, a_idx, k);
 
-        kernel.raw.load_matrix_sync(frag_a, a_idx, k);
-        kernel.raw.load_matrix_sync(frag_b, b_idx, n);
+        let b_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: tk, b: n }));
+        let b_col = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: b_row, b: tile_n }));
+        let b_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: b_col, b: base }));
+
+        kernel.raw.load_matrix_sync(b, frag_b, b_idx, n);
 
         Ok(())
     })?;
 
-    kernel.raw.store_matrix_sync(frag_c, c_idx, n);
+    let c_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: tile_m, b: n }));
+    let c_col = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: c_row, b: tile_n }));
+    let c_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: c_col, b: base }));
 
-    // deepest.extend(a_deepest);
-    // deepest.extend(b_deepest);
+    kernel.raw.store_matrix_sync(c, frag_c, c_idx, n);
 
     Ok(deepest)
 }

@@ -221,7 +221,6 @@ pub fn lower_forward(
 
             let new_roots = eval_node(
                 root,
-                0,
                 &NodeInput::Node(root),
                 out,
                 &mut resolved,
@@ -300,7 +299,6 @@ fn ensure_param_slot(
 
 fn eval_node(
     root: NodeId,
-    input: NodeId,
     node_id: &NodeInput,
     out: ValueId,
     resolved: &mut Vec<NodeId>,
@@ -429,7 +427,6 @@ fn eval_node(
             deepest.extend(lower(
                 eval_node,
                 root,
-                input,
                 resolved,
                 None,
                 node_id,

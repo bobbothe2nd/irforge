@@ -53,7 +53,6 @@ macro_rules! lower_unary {
     ) => {
         |eval_node: fn(
             NodeId,
-            NodeId,
             &NodeInput,
             ValueId,
             &mut Vec<NodeId>,
@@ -72,7 +71,6 @@ macro_rules! lower_unary {
             &CompilationOptions,
         ) -> Result<Vec<NodeId>, Error>,
         root: NodeId,
-        input: NodeId,
         resolved: &mut Vec<NodeId>,
         backwardness: Option<u8>,
         node_id: NodeId,
@@ -103,7 +101,6 @@ macro_rules! lower_unary {
                     );
                     deepest = eval_node(
                         root,
-                        input,
                         &NodeInput::Node(node_input),
                         upstream,
                         resolved,
@@ -151,7 +148,6 @@ macro_rules! lower_unary {
                     deepest = if $load_forward {
                         eval_node(
                             root,
-                            input,
                             &NodeInput::Param {
                                 param: saved_params[node_id].ok_or(Error {
                                     msg: "could not materialize saved forward param",
@@ -188,7 +184,6 @@ macro_rules! lower_unary {
 
                     deepest.extend(eval_node(
                         root,
-                        input,
                         &NodeInput::Node(node_id),
                         acc,
                         resolved,

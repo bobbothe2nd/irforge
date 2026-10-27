@@ -76,7 +76,6 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -95,7 +94,6 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
                     root: NodeId,
-                    input: NodeId,
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
@@ -127,7 +125,6 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let a_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(a),
                             a_val,
                             resolved,
@@ -152,7 +149,6 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let b_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(b),
                             b_val,
                             resolved,
@@ -182,7 +178,6 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                     Some(0 | 1) => {
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             out,
                             resolved,
@@ -238,7 +233,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -257,7 +251,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
                     root: NodeId,
-                    input: NodeId,
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
@@ -289,7 +282,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let a_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(a),
                             a_val,
                             resolved,
@@ -314,7 +306,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let b_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(b),
                             b_val,
                             resolved,
@@ -350,7 +341,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             g_val,
                             resolved,
@@ -388,7 +378,6 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             g_val,
                             resolved,
@@ -451,7 +440,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -470,7 +458,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
                     root: NodeId,
-                    input: NodeId,
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
@@ -502,7 +489,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let a_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(a),
                             a_val,
                             resolved,
@@ -527,7 +513,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let b_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(b),
                             b_val,
                             resolved,
@@ -557,7 +542,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                     Some(0) => {
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             out,
                             resolved,
@@ -588,7 +572,6 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             g_val,
                             resolved,
@@ -646,7 +629,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
-                NodeId,
                 &NodeInput,
                 ValueId,
                 &mut Vec<NodeId>,
@@ -665,7 +647,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                 &CompilationOptions,
             ) -> Result<Vec<NodeId>, Error>,
                     root: NodeId,
-                    input: NodeId,
                     resolved: &mut Vec<NodeId>,
                     backwardness: Option<u8>,
                     node_id: NodeId,
@@ -697,7 +678,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let a_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(a),
                             a_val,
                             resolved,
@@ -722,7 +702,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let b_deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(b),
                             b_val,
                             resolved,
@@ -758,7 +737,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             g_val,
                             resolved,
@@ -796,7 +774,6 @@ pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
                         let deep = eval_node(
                             root,
-                            input,
                             &NodeInput::Node(node_id),
                             g_val,
                             resolved,

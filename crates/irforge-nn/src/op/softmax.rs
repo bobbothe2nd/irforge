@@ -14,7 +14,6 @@ use std::{format, vec, vec::Vec};
 pub fn lower_softmax_recursive(
     eval_node: impl Fn(
         NodeId,
-        NodeId,
         &NodeInput,
         ValueId,
         &mut Vec<NodeId>,
@@ -33,7 +32,6 @@ pub fn lower_softmax_recursive(
         &CompilationOptions,
     ) -> Result<Vec<NodeId>, Error>,
     root: NodeId,
-    input: NodeId,
     resolved: &mut Vec<NodeId>,
     backwardness: Option<u8>,
     node_id: NodeId,
@@ -139,7 +137,6 @@ pub fn lower_softmax_recursive(
 
                 x_deep = eval_node(
                     root,
-                    input,
                     &NodeInput::Node(node.inputs[0]),
                     x_val,
                     resolved,
@@ -296,7 +293,6 @@ pub fn lower_softmax_recursive(
 
                 eval_node(
                     root,
-                    input,
                     &NodeInput::Node(node.inputs[0]),
                     x_val,
                     resolved,
@@ -477,7 +473,6 @@ pub fn lower_softmax_recursive(
 
                 dy_deep = eval_node(
                     root,
-                    input,
                     &NodeInput::Node(node_id),
                     dy_idx,
                     resolved,
@@ -621,7 +616,6 @@ pub fn lower_softmax_recursive(
 
                 eval_node(
                     root,
-                    input,
                     &NodeInput::Node(node_id),
                     dy_idx,
                     resolved,
