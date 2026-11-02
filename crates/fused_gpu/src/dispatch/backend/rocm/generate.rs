@@ -58,7 +58,7 @@ using namespace hip::wmma;
     for op in &src.ops {
         newline(pretty_print, &mut out, nesting);
 
-        process_op(&mut out, op, &mut nesting, src)?;
+        process_op(&mut out, op, &mut nesting, options, src)?;
     }
 
     newline(pretty_print, &mut out, 0);
@@ -106,43 +106,44 @@ fn process_op(
     out: &mut String,
     op: &Op,
     nesting: &mut usize,
+    options: &CompilationOptions,
     kernel: &RawKernel,
 ) -> Result<(), Error> {
     match op {
         Op::Nop => {}
 
-        Op::DefineVar { id } => def_var_c(out, nesting, *id, kernel, process_op)?,
+        Op::DefineVar { id } => def_var_c(out, nesting, *id, kernel, options, process_op)?,
 
         Op::OverwriteVar { id, val } => {
-            let _ = write!(out, "v{id} = {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} = {};", render_val(*val, kernel, options)?);
         }
 
         Op::AddAssign { id, val } => {
-            let _ = write!(out, "v{id} += {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} += {};", render_val(*val, kernel, options)?);
         }
 
         Op::MulAssign { id, val } => {
-            let _ = write!(out, "v{id} *= {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} *= {};", render_val(*val, kernel, options)?);
         }
 
         Op::DivAssign { id, val } => {
-            let _ = write!(out, "v{id} /= {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} /= {};", render_val(*val, kernel, options)?);
         }
 
         Op::SubAssign { id, val } => {
-            let _ = write!(out, "v{id} -= {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} -= {};", render_val(*val, kernel, options)?);
         }
 
         Op::ShlAssign { id, val } => {
-            let _ = write!(out, "v{id} <<= {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} <<= {};", render_val(*val, kernel, options)?);
         }
 
         Op::ShrAssign { id, val } => {
-            let _ = write!(out, "v{id} >>= {};", render_val(*val, kernel)?);
+            let _ = write!(out, "v{id} >>= {};", render_val(*val, kernel, options)?);
         }
 
         Op::CopyVar { id } => {
-            let _ = out.write_str(&render_val(*id, kernel)?);
+            let _ = out.write_str(&render_val(*id, kernel, options)?);
         }
 
         Op::ConstF64 { val } => {
@@ -177,8 +178,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) == ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -186,8 +187,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) != ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -195,8 +196,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) < ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -204,8 +205,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) > ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -213,8 +214,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) <= ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -222,8 +223,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) >= ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -247,8 +248,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) + ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -256,8 +257,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) - ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -265,8 +266,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) * ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -274,8 +275,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) / ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -283,8 +284,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) % ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -292,8 +293,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "pow({}, {})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -301,8 +302,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) << ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -310,8 +311,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "({}) >> ({})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -324,9 +325,9 @@ fn process_op(
             let _ = write!(
                 out,
                 "{symbol}({}, {}, {})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?,
-                render_val(*c, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?,
+                render_val(*c, kernel, options)?
             );
         }
 
@@ -334,8 +335,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "max({}, {})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -343,8 +344,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "min({}, {})",
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
@@ -352,42 +353,42 @@ fn process_op(
             let _ = write!(
                 out,
                 "({} ? {} : {})",
-                render_val(*cond, kernel)?,
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?
+                render_val(*cond, kernel, options)?,
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?
             );
         }
 
         Op::Exp { x } => {
-            let _ = write!(out, "exp({})", render_val(*x, kernel)?);
+            let _ = write!(out, "exp({})", render_val(*x, kernel, options)?);
         }
 
         Op::Abs { x } => {
-            let _ = write!(out, "abs({})", render_val(*x, kernel)?);
+            let _ = write!(out, "abs({})", render_val(*x, kernel, options)?);
         }
 
         Op::Neg { x } => {
-            let _ = write!(out, "-({})", render_val(*x, kernel)?);
+            let _ = write!(out, "-({})", render_val(*x, kernel, options)?);
         }
 
         Op::Log { x } => {
-            let _ = write!(out, "log({})", render_val(*x, kernel)?);
+            let _ = write!(out, "log({})", render_val(*x, kernel, options)?);
         }
 
         Op::Tanh { x } => {
-            let _ = write!(out, "tanh({})", render_val(*x, kernel)?);
+            let _ = write!(out, "tanh({})", render_val(*x, kernel, options)?);
         }
 
         Op::Sqrt { x } => {
-            let _ = write!(out, "sqrt({})", render_val(*x, kernel)?);
+            let _ = write!(out, "sqrt({})", render_val(*x, kernel, options)?);
         }
 
         Op::ParamLoad { param, index } => {
-            let _ = write!(out, "param{param}[{}]", render_val(*index, kernel)?);
+            let _ = write!(out, "param{param}[{}]", render_val(*index, kernel, options)?);
         }
 
         Op::Not { cond } => {
-            let _ = write!(out, "!({})", render_val(*cond, kernel)?);
+            let _ = write!(out, "!({})", render_val(*cond, kernel, options)?);
         }
 
         Op::Cast { id, dtype } => {
@@ -395,7 +396,7 @@ fn process_op(
                 out,
                 "static_cast<{}>({})",
                 dtype.fmt_c(),
-                render_val(*id, kernel)?
+                render_val(*id, kernel, options)?
             );
         }
 
@@ -404,7 +405,7 @@ fn process_op(
                 out,
                 "__builtin_bit_cast({}, {})",
                 dtype.fmt_c(),
-                render_val(*id, kernel)?
+                render_val(*id, kernel, options)?
             );
         }
 
@@ -416,8 +417,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] = {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -429,8 +430,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] += {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -442,8 +443,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] *= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -455,8 +456,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] /= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -468,8 +469,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] -= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -481,8 +482,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] <<= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -494,21 +495,21 @@ fn process_op(
             let _ = write!(
                 out,
                 "param{param}[{}] >>= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
         Op::SharedLoad { mem, index } => {
-            let _ = write!(out, "shared{mem}[{}]", render_val(*index, kernel)?);
+            let _ = write!(out, "shared{mem}[{}]", render_val(*index, kernel, options)?);
         }
 
         Op::SharedStore { mem, index, val } => {
             let _ = write!(
                 out,
                 "shared{mem}[{}] = {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -516,8 +517,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] += {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -525,8 +526,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] *= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -534,8 +535,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] /= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -543,8 +544,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] -= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -552,8 +553,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] <<= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -561,8 +562,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "shared{mem}[{}] >>= {};",
-                render_val(*index, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*index, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -570,8 +571,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "for (; v{index} < {}; v{index} += {}) {{",
-                render_val(*end, kernel)?,
-                render_val(*step, kernel)?,
+                render_val(*end, kernel, options)?,
+                render_val(*step, kernel, options)?,
             );
             *nesting += 1;
         }
@@ -582,7 +583,7 @@ fn process_op(
         }
 
         Op::IfBegin { cond } => {
-            let _ = write!(out, "if ({}) {{", render_val(*cond, kernel)?);
+            let _ = write!(out, "if ({}) {{", render_val(*cond, kernel, options)?);
             *nesting += 1;
         }
 
@@ -621,8 +622,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "fill_fragment({}, {});",
-                render_val(*frag, kernel)?,
-                render_val(*val, kernel)?
+                render_val(*frag, kernel, options)?,
+                render_val(*val, kernel, options)?
             );
         }
 
@@ -630,8 +631,8 @@ fn process_op(
             let _ = write!(
                 out,
                 "{}[{}]",
-                render_val(*pointer, kernel)?,
-                render_val(*index, kernel)?,
+                render_val(*pointer, kernel, options)?,
+                render_val(*index, kernel, options)?,
             );
         }
 
@@ -644,9 +645,9 @@ fn process_op(
             let _ = write!(
                 out,
                 "load_matrix_sync({}, param{param} + {}, {});",
-                render_val(*frag, kernel)?,
-                render_val(*index, kernel)?,
-                render_val(*stride, kernel)?
+                render_val(*frag, kernel, options)?,
+                render_val(*index, kernel, options)?,
+                render_val(*stride, kernel, options)?
             );
         }
 
@@ -654,10 +655,10 @@ fn process_op(
             let _ = write!(
                 out,
                 "mma_sync({}, {}, {}, {});",
-                render_val(*acc, kernel)?,
-                render_val(*a, kernel)?,
-                render_val(*b, kernel)?,
-                render_val(*c, kernel)?
+                render_val(*acc, kernel, options)?,
+                render_val(*a, kernel, options)?,
+                render_val(*b, kernel, options)?,
+                render_val(*c, kernel, options)?
             );
         }
 
@@ -671,9 +672,9 @@ fn process_op(
             let _ = write!(
                 out,
                 "store_matrix_sync(param{param} +{}, {}, {}, mem_{});",
-                render_val(*index, kernel)?,
-                render_val(*frag, kernel)?,
-                render_val(*stride, kernel)?,
+                render_val(*index, kernel, options)?,
+                render_val(*frag, kernel, options)?,
+                render_val(*stride, kernel, options)?,
                 layout.fmt_wmma(),
             );
         }
@@ -682,6 +683,6 @@ fn process_op(
     Ok(())
 }
 
-fn render_val(id: ValueId, kernel: &RawKernel) -> Result<String, Error> {
-    codegen::render_val(id, kernel, process_op)
+fn render_val(id: ValueId, kernel: &RawKernel, options: &CompilationOptions) -> Result<String, Error> {
+    codegen::render_val(id, kernel, options, process_op)
 }

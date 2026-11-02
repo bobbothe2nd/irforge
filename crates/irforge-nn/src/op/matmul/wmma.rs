@@ -1,7 +1,7 @@
 use fused_gpu::{
     dispatch::{
         CompilationOptions, backend::{
-            DType, Graph, NodeId, Op, Param, ParamId, SimpleDType, TensorLayout, ValueId, ValueState, kernel::{LinkedKernel, NodeInput},
+            Axis, DType, Graph, NodeId, Op, Param, ParamId, SimpleDType, TensorLayout, ValueId, ValueState, kernel::{LinkedKernel, NodeInput},
         },
     }, errors::{Error, ErrorKind},
 };
@@ -40,12 +40,12 @@ pub fn forward_matmul(
     b_node: &NodeInput,
     _graph: &Graph,
     _out: ValueId,
-    node_params: &[Option<ParamId>],
-    _saved_params: &[Option<ParamId>],
+    _node_params: &[Option<ParamId>],
+    saved_params: &[Option<ParamId>],
     kernel: &mut LinkedKernel,
     base: ValueId,
-    row: ValueId,
-    col: ValueId,
+    _row: ValueId,
+    _col: ValueId,
     _local_row: ValueId,
     _local_col: ValueId,
     _shared_size: u32,
@@ -66,9 +66,31 @@ pub fn forward_matmul(
     kernel.raw.block.tile = [tile_width, tile_width, 1];
     kernel.raw.block.dim3 = block;
 
+    let bid_x = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Inline,
+        Some(Op::BlockId { axis: Axis::X }),
+    );
+    let tile_m = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Immut,
+        Some(Op::Mul { a: tile_size, b: bid_x }),
+    );
+
+    let bid_y = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Inline,
+        Some(Op::BlockId { axis: Axis::Y }),
+    );
+    let tile_n = kernel.raw.def_var(
+        DType::Simple(SimpleDType::U32),
+        ValueState::Immut,
+        Some(Op::Mul { a: tile_size, b: bid_y }),
+    );
+
     let a = match a_node {
         NodeInput::Param { param, .. } => *param,
-        NodeInput::Node(node_id) => node_params[*node_id].ok_or(Error {
+        NodeInput::Node(node_id) => saved_params[*node_id].ok_or(Error {
             msg: "expected a_node mapping to param",
             kind: ErrorKind::UnresolvedInput,
             ctx: (),
@@ -76,14 +98,14 @@ pub fn forward_matmul(
     };
     let b = match b_node {
         NodeInput::Param { param, .. } => *param,
-        NodeInput::Node(node_id) => node_params[*node_id].ok_or(Error {
-            msg: "expected a_node mapping to param",
+        NodeInput::Node(node_id) => saved_params[*node_id].ok_or(Error {
+            msg: "expected b_node mapping to param",
             kind: ErrorKind::UnresolvedInput,
             ctx: (),
         })?,
     };
-    let c = node_params[node_id].ok_or(Error {
-        msg: "expected a_node mapping to param",
+    let c = saved_params[node_id].ok_or(Error {
+        msg: "expected node_id mapping to param",
         kind: ErrorKind::UnresolvedOutput,
         ctx: (),
     })?;
@@ -142,9 +164,9 @@ pub fn forward_matmul(
     kernel.push_for_loop(tk, k, tile_size, |kernel| {
         let a_col = if swap_a {
             let a_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: k, b: tk }));
-            kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: a_row, b: row }))
+            kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: a_row, b: tile_m }))
         } else {
-            let a_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: k, b: row }));
+            let a_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: k, b: tile_m }));
             kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: a_row, b: tk }))
         };
         let a_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: a_col, b: base }));
@@ -152,11 +174,11 @@ pub fn forward_matmul(
         kernel.raw.load_matrix_sync(a, frag_a, a_idx, k);
 
         let b_col = if swap_b {
-            let b_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: n, b: col }));
+            let b_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: n, b: tile_n }));
             kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: b_row, b: tk }))
         } else {
             let b_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: n, b: tk }));
-            kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: b_row, b: col }))
+            kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: b_row, b: tile_n }))
         };
         let b_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: b_col, b: base }));
 
@@ -167,8 +189,8 @@ pub fn forward_matmul(
         Ok(())
     })?;
 
-    let c_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: row, b: n }));
-    let c_col = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: c_row, b: col }));
+    let c_row = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Mul { a: tile_m, b: n }));
+    let c_col = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: c_row, b: tile_n }));
     let c_idx = kernel.raw.def_var(DType::Simple(SimpleDType::U32), ValueState::Inline, Some(Op::Add { a: c_col, b: base }));
 
     kernel.raw.store_matrix_sync(c, frag_c, c_idx, n, TensorLayout::RowMajor);

@@ -1,6 +1,6 @@
 use crate::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuBackend, GpuBufferBackend,
+        CompilationOptions, GpuBackend, GpuBufferBackend,
         GpuKernelBackend, TargetCompilationOptions, TargetFlags,
         backend::{
             MetaId, NodeId, Param,
@@ -150,8 +150,8 @@ impl GpuBackend for GpuContext {
 
     fn target_spec(&self) -> TargetCompilationOptions {
         TargetCompilationOptions {
-            flags: TargetFlags::empty(),
-            subgroup_size: None,
+            flags: TargetFlags::empty() /* TargetFlags::LIN_ACC */,
+            subgroup_size: None /* Some(core::num::NonZeroU8::new(32).unwrap()) */,
         }
     }
 
@@ -328,9 +328,7 @@ impl GpuBackend for GpuContext {
         let source = generate::generate_wgsl(
             src,
             params,
-            options
-                .debug
-                .contains(DebugCompilationOptions::PRETTY_PRINT_IR),
+            options,
         )?;
 
         let shader = self.device.create_shader_module(ShaderModuleDescriptor {

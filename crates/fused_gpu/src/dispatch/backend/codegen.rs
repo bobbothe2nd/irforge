@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Write};
 
 use crate::{
-    dispatch::backend::{Axis, DType, Op, SimpleDType, TensorLayout, ValueId, ValueState, kernel::RawKernel}, errors::{Error, ErrorKind},
+    dispatch::{CompilationOptions, backend::{Axis, DType, Op, SimpleDType, TensorLayout, ValueId, ValueState, kernel::RawKernel}}, errors::{Error, ErrorKind},
 };
 
 impl SimpleDType {
@@ -98,6 +98,16 @@ impl DType {
 
         dtype.fmt_wgsl()
     }
+
+    #[inline]
+    pub fn fmt_wgsl_smma(self) -> Result<String, Error> {
+        match self {
+            Self::Simple(dtype) => dtype.fmt_wgsl().map(Into::into),
+            Self::MmaA { dtype, m, n, .. }
+            | Self::MmaB { dtype, m, n, .. }
+            | Self::MmaAccum { dtype, m, n, .. } => Ok(format!("array<{},{}>", dtype.fmt_wgsl()?, m * n)),
+        }
+    }
 }
 
 impl Display for Axis {
@@ -163,10 +173,11 @@ pub fn def_var_wgsl<F>(
     nesting: &mut usize,
     id: ValueId,
     kernel: &RawKernel,
+    options: &CompilationOptions,
     process_op: F,
 ) -> Result<(), Error>
 where
-    F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
+    F: FnOnce(&mut String, &Op, &mut usize, &CompilationOptions, &RawKernel) -> Result<(), Error>,
 {
     let val = &kernel.vals[id];
     match val.state {
@@ -176,7 +187,7 @@ where
 
             if let Some(op) = &val.init {
                 let _ = out.write_str(" = ");
-                process_op(out, op, nesting, kernel)?;
+                process_op(out, op, nesting, options, kernel)?;
             }
 
             let _ = out.write_char(';');
@@ -190,7 +201,50 @@ where
 
             if let Some(op) = &val.init {
                 let _ = out.write_str(" = ");
-                process_op(out, op, nesting, kernel)?;
+                process_op(out, op, nesting, options, kernel)?;
+            }
+
+            let _ = out.write_char(';');
+        }
+    }
+
+    Ok(())
+}
+
+pub fn def_var_wgsl_smma<F>(
+    out: &mut String,
+    nesting: &mut usize,
+    id: ValueId,
+    kernel: &RawKernel,
+    options: &CompilationOptions,
+    process_op: F,
+) -> Result<(), Error>
+where
+    F: FnOnce(&mut String, &Op, &mut usize, &CompilationOptions, &RawKernel) -> Result<(), Error>,
+{
+    let val = &kernel.vals[id];
+    match val.state {
+        ValueState::Masked | ValueState::Inline => {}
+        ValueState::Const => {
+            let _ = write!(out, "const v{id}: {}", val.dtype.fmt_wgsl()?);
+
+            if let Some(op) = &val.init {
+                let _ = out.write_str(" = ");
+                process_op(out, op, nesting, options, kernel)?;
+            }
+
+            let _ = out.write_char(';');
+        }
+        var => {
+            if var == ValueState::Immut {
+                let _ = write!(out, "let v{id}: {}", val.dtype.fmt_wgsl_smma()?);
+            } else {
+                let _ = write!(out, "var v{id}: {}", val.dtype.fmt_wgsl_smma()?);
+            }
+
+            if let Some(op) = &val.init {
+                let _ = out.write_str(" = ");
+                process_op(out, op, nesting, options, kernel)?;
             }
 
             let _ = out.write_char(';');
@@ -205,10 +259,11 @@ pub fn def_var_c<F>(
     nesting: &mut usize,
     id: ValueId,
     kernel: &RawKernel,
+    options: &CompilationOptions,
     process_op: F,
 ) -> Result<(), Error>
 where
-    F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
+    F: FnOnce(&mut String, &Op, &mut usize, &CompilationOptions, &RawKernel) -> Result<(), Error>,
 {
     let val = &kernel.vals[id];
 
@@ -219,7 +274,7 @@ where
             let _ = write!(out, "#define v{id}");
 
             if let Some(op) = &val.init {
-                process_op(out, op, nesting, kernel)?;
+                process_op(out, op, nesting, options, kernel)?;
             }
         }
 
@@ -232,7 +287,7 @@ where
 
             if let Some(op) = &val.init {
                 let _ = out.write_str(" = ");
-                process_op(out, op, nesting, kernel)?;
+                process_op(out, op, nesting, options, kernel)?;
             }
 
             let _ = out.write_char(';');
@@ -242,16 +297,16 @@ where
     Ok(())
 }
 
-pub fn render_val<F>(id: ValueId, kernel: &RawKernel, process_op: F) -> Result<String, Error>
+pub fn render_val<F>(id: ValueId, kernel: &RawKernel, options: &CompilationOptions, process_op: F) -> Result<String, Error>
 where
-    F: FnOnce(&mut String, &Op, &mut usize, &RawKernel) -> Result<(), Error>,
+    F: FnOnce(&mut String, &Op, &mut usize, &CompilationOptions, &RawKernel) -> Result<(), Error>,
 {
     let mut out = String::new();
     let val = &kernel.vals[id];
     match val.state {
         ValueState::Inline => {
             if let Some(op) = &val.init {
-                process_op(&mut out, op, &mut 0, kernel)?;
+                process_op(&mut out, op, &mut 0, options, kernel)?;
             }
         }
         ValueState::Masked => {}

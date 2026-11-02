@@ -644,9 +644,6 @@ pub enum DispatchOptions {
     /// Require no special dispatch (used for most)
     Any,
 
-    /// This node does **N**ot **R**ea**d** **G**lobal **Id**entity (used for WMMA matmul)
-    NRdGid,
-
     /// Require rows to remain consistent for iteration by column
     ReqRow,
 

@@ -1,13 +1,11 @@
 use fused_gpu::{
     dispatch::{
-        CompilationOptions, TargetFlags,
-        backend::{
+        CompilationOptions, DebugCompilationOptions, TargetFlags, backend::{
             Axis, DType, DispatchOptions, Graph, GraphOp, Node, NodeId, Op, Param, ParamId,
             SimpleDType, ValueId, ValueState,
             kernel::{LinkedKernel, NodeInput, SaveIndicator},
         },
-    },
-    errors::{Error, ErrorKind, GraphErrorContext},
+    }, errors::{Error, ErrorKind, GraphErrorContext},
 };
 use std::{format, vec, vec::Vec};
 
@@ -150,12 +148,6 @@ macro_rules! impl_lower {
                 Some(Op::ReadMeta { param: 0, field: k }),
             );
 
-            if backwardness.is_none() {
-                kernel
-                    .raw
-                    .overwrite_var(out, node.dtype.constant_float(0.0)?);
-            }
-
             $inner::forward_matmul(
                 eval_node,
                 node.dtype,
@@ -279,15 +271,12 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     let last_idx = shape.len() - 1;
     shape[last_idx] = graph.nodes[b].shape[last_idx];
 
-    let is_wmma = graph
-        .target
-        .map(|target| target.flags.contains(TargetFlags::LIN_ACC) && target.subgroup_size.is_some())
-        .unwrap_or_default();
+    let is_wmma = graph.target.is_some_and(|target| target.subgroup_size.is_some());
 
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: if is_wmma {
-                wmma_matmul_recursive
+                maybe_wmma
             } else {
                 generic_matmul_recursive
             },
@@ -300,15 +289,59 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
             save,
             valid_shape,
             display: |inputs| format!("{:?} @ {:?}", inputs[0], inputs[1]),
-            valid_dispatch: if is_wmma {
-                DispatchOptions::NRdGid
-            } else {
-                DispatchOptions::Any
-            },
+            valid_dispatch: DispatchOptions::Any,
         },
         inputs: vec![a, b].into_boxed_slice(),
         outputs: Vec::new(),
         shape,
         dtype: graph.nodes[a].dtype,
     })
+}
+
+fn maybe_wmma(
+    eval_node: impl Fn(
+        NodeId,
+        &NodeInput,
+        ValueId,
+        &mut Vec<NodeId>,
+        &Graph,
+        &[Option<ParamId>],
+        &[Option<ParamId>],
+        &mut LinkedKernel,
+        ValueId,
+        ValueId,
+        ValueId,
+        ValueId,
+        u32,
+        ValueId,
+        &[Param],
+        &mut bool,
+        &CompilationOptions,
+    ) -> Result<Vec<NodeId>, Error>,
+    root: NodeId,
+    resolved: &mut Vec<NodeId>,
+    backwardness: Option<u8>,
+    node_id: NodeId,
+    graph: &Graph,
+    out: ValueId,
+    node_params: &[Option<ParamId>],
+    saved_params: &[Option<ParamId>],
+    kernel: &mut LinkedKernel,
+    base: ValueId,
+    idx: ValueId,
+    local_row: ValueId,
+    local_col: ValueId,
+    shared_size: u32,
+    tile_size: ValueId,
+    params: &[Param],
+    stable_iteration_space: &mut bool,
+    options: &CompilationOptions,
+) -> Result<Vec<NodeId>, Error> {
+    if options.target.flags.contains(TargetFlags::LIN_ACC)
+        || options.debug.contains(DebugCompilationOptions::SOFT_MMA)
+    {
+        wmma_matmul_recursive(eval_node, root, resolved, backwardness, node_id, graph, out, node_params, saved_params, kernel, base, idx, local_row, local_col, shared_size, tile_size, params, stable_iteration_space, options)
+    } else {
+        generic_matmul_recursive(eval_node, root, resolved, backwardness, node_id, graph, out, node_params, saved_params, kernel, base, idx, local_row, local_col, shared_size, tile_size, params, stable_iteration_space, options)
+    }
 }

@@ -58,6 +58,9 @@ bitflags::bitflags! {
     pub struct DebugCompilationOptions: u8 {
         /// Formats intermediate representation
         const PRETTY_PRINT_IR = 1 << 0;
+
+        /// On supported backends, use a soft MMA implementation for testing
+        const SOFT_MMA = 1 << 1;
     }
 }
 

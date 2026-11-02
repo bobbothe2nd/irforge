@@ -244,8 +244,7 @@ pub fn lower_forward(
 
                 if let GraphOp::Custom { valid_dispatch, .. } = node.op {
                     match valid_dispatch {
-                        DispatchOptions::Any
-                        | DispatchOptions::NRdGid => {}
+                        DispatchOptions::Any => {}
 
                         DispatchOptions::ReqRow => {
                             kernel.raw.block.dim3 = [1, shared_size, 1];
