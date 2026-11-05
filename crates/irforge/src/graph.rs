@@ -1,8 +1,7 @@
 use crate::{
     backend::SavedNodes,
     dispatch::{CompilationOptions, KernelGroup, LossType, Node, OptimType, SimpleDType},
-    id::{EdgeId, MetaId, NodeId},
-    meta::Metadata,
+    ir::{Metadata, EdgeId, MetaId, NodeId},
     tensor::{bf16, f16},
 };
 use briny::raw::{alloc::cast_vec, cast::cast_slice};
@@ -106,16 +105,17 @@ impl Graph {
     }
 
     #[inline]
-    pub fn lower(
-        &mut self,
+    pub fn lower<'a>(
+        &'a mut self,
         meta: Metadata,
         saved: &SavedNodes,
-    ) -> Result<KernelGroup, Error<GraphErrorContext>> {
+    ) -> Result<KernelGroup<'a>, Error<GraphErrorContext>> {
         self.inner_mut().rebuild_outputs();
 
-        self.inner()
-            .lower(meta.0, &saved.0)
-            .map_err(move |e| e.into())
+        let ir = self.inner()
+            .lower(meta.0, &saved.0)?;
+        let options = self.inner().options.as_ref().unwrap();
+        Ok(KernelGroup { inner: Box::new(ir), options })
     }
 
     pub fn define<F, R>(&mut self, f: F) -> R

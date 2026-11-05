@@ -1,10 +1,7 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
-        OptCompilationOptions, SimpleDType,
-    },
-    io::BpatHeader,
-    nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder, OptCompilationOptions, RawMetaBuf, SimpleDType,
+    }, io::BpatHeader, nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
 };
 use rand_core::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -78,7 +75,7 @@ fn main() {
         matmul(out, e);
     });
 
-    let meta_binding = [LR.to_bits(), M, N, K, H];
+    let meta_binding = RawMetaBuf { lr: LR, dims: &[M, N, K, H] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -86,15 +83,14 @@ fn main() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &optim.state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &optim.state)
         .unwrap();
 
     let compile_start = Instant::now();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let compile_elapsed = compile_start.elapsed();
 
@@ -124,7 +120,7 @@ fn main() {
     let mut schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],

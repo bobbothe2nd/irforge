@@ -1,9 +1,7 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
-        OptCompilationOptions, SimpleDType,
-    },
-    nn::{
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder, OptCompilationOptions, RawMetaBuf, SimpleDType,
+    }, nn::{
         CROSS_ENTROPY, MEAN_SQUARED_ERROR, Optim, add, constant_f32, div, input, matmul, mul,
         softmax, sub,
     },
@@ -39,7 +37,7 @@ fn mul_add_forward_backward() {
         add(c, x);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), 32, 32];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[32, 32] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -47,13 +45,12 @@ fn mul_add_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f32(&[32, 32], &[3.0; 1024]).unwrap(),
@@ -66,7 +63,7 @@ fn mul_add_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],
@@ -129,7 +126,7 @@ fn matmul_sub_softmax_forward_backward() {
         softmax(s);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), 16, 64, 32];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[16, 64, 32] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -137,13 +134,12 @@ fn matmul_sub_softmax_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f32(&[16, 32], &[3.0; 512]).unwrap(),
@@ -157,7 +153,7 @@ fn matmul_sub_softmax_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],
@@ -221,7 +217,7 @@ fn div_const_softmax_forward_backward() {
         add(soft, two);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), 16, 32];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[16, 32] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -229,13 +225,12 @@ fn div_const_softmax_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [ctx.init_tensor_f32(&[16, 32], &[3.0; 512]).unwrap()];
 
@@ -244,7 +239,7 @@ fn div_const_softmax_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],
@@ -308,7 +303,7 @@ fn matmul_add_forward_backward() {
         add(x, c);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[M, N, K] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -316,13 +311,12 @@ fn matmul_add_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f32(&[M, K], &[A_VAL; (M * K) as usize])
@@ -339,7 +333,7 @@ fn matmul_add_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],
@@ -434,7 +428,7 @@ fn matmul_chain3_forward_backward() {
         add(z, e);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K, H];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[M, N, K, H] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -442,13 +436,12 @@ fn matmul_chain3_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f32(&[M, K], &[A_VAL; (M * K) as usize])
@@ -469,7 +462,7 @@ fn matmul_chain3_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],
@@ -578,7 +571,7 @@ fn matmul_sub_forward_backward() {
         sub(x, y);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), M, N, K];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[M, N, K] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -586,13 +579,12 @@ fn matmul_sub_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f32(&[M, K], &[A_VAL; (M * K) as usize])
@@ -611,7 +603,7 @@ fn matmul_sub_forward_backward() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],

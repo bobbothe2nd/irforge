@@ -27,8 +27,7 @@ use crate::{
     dispatch::{
         AllocTensors, CompilationOptions, GpuBackend, GpuBufferBackend, GpuKernelBackend,
         GpuKernelGroup, KernelGroup, OptimState, Param, TargetCompilationOptions,
-    },
-    graph::Graph,
+    }, graph::Graph,
 };
 
 pub struct SavedNodes(pub(crate) Vec<SaveIndicator>);
@@ -168,12 +167,6 @@ impl<B: GpuBackend> GpuContext<B> {
     }
 
     #[inline]
-    #[must_use]
-    pub fn alloc_meta(&self, meta: &[u32]) -> &MetaBinding {
-        unsafe { core::mem::transmute::<&[u32], &MetaBinding>(meta) }
-    }
-
-    #[inline]
     pub fn schedule<'a>(
         &self,
         kernels: GpuKernelGroup<B>,
@@ -262,9 +255,8 @@ impl<B: GpuBackend> GpuContext<B> {
     pub fn compile<'a>(
         &self,
         ir: &'a KernelGroup,
-        options: &CompilationOptions,
     ) -> Result<GpuKernelGroup<'a, B>, Error> {
-        self.0.compile(ir, options)
+        self.0.compile(&ir.inner, ir.options)
     }
 
     #[inline]

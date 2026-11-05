@@ -1,7 +1,6 @@
 mod backend;
 mod graph;
-mod id;
-mod meta;
+mod ir;
 mod optim;
 
 pub use fused_gpu::tensor;
@@ -19,8 +18,8 @@ pub mod dispatch {
     };
 
     pub use fused_gpu::dispatch::backend::kernel::{
-        Dependencies, Kernel, KernelGroup, KernelsChained, KernelsRedirected, LinkedKernel,
-        NodeInput, RawKernel, Redirect, SaveIndicator,
+        Dependencies, Kernel, KernelsChained, KernelsRedirected, LinkedKernel, NodeInput,
+        RawKernel, Redirect, SaveIndicator,
     };
 
     pub use fused_gpu::dispatch::KernelGroup as GpuKernelGroup;
@@ -28,8 +27,7 @@ pub mod dispatch {
     pub use crate::{
         backend::{GpuContext, MetaBinding, SavedNodes, Schedule},
         graph::Graph,
-        id::{EdgeId, MetaId, NodeId, ParamId, SharedId, ValueId},
-        meta::{MetaBuilder, Metadata},
+        ir::{KernelGroup, MetaBuilder, RawMetaBuf, Metadata, EdgeId, MetaId, NodeId, ParamId, SharedId, ValueId},
     };
 
     pub mod backend {
@@ -79,9 +77,13 @@ pub mod nn {
 }
 
 pub mod codegen {
-    pub use fused_gpu::dispatch::backend::{
-        codegen::*, kernel::remap::*, rocm::generate::generate_hip, wgsl::generate::generate_wgsl,
-    };
+    pub use fused_gpu::dispatch::backend::{kernel::remap::*, codegen::*};
+
+    #[cfg(feature = "wgsl")]
+    pub use fused_gpu::dispatch::backend::wgsl::generate::generate_wgsl;
+
+    #[cfg(feature = "rocm")]
+    pub use fused_gpu::dispatch::backend::rocm::generate::generate_hip;
 }
 
 #[allow(dead_code)]

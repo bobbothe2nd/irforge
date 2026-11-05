@@ -1,10 +1,7 @@
 use irforge::{
     dispatch::{
-        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
-        OptCompilationOptions, SimpleDType,
-    },
-    nn::{MEAN_SQUARED_ERROR, Optim, add, input, mul},
-    tensor::f16,
+        CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder, OptCompilationOptions, RawMetaBuf, SimpleDType,
+    }, nn::{MEAN_SQUARED_ERROR, Optim, add, input, mul}, tensor::f16,
 };
 
 #[test]
@@ -37,7 +34,7 @@ fn mul_add_f16() {
         add(c, x);
     });
 
-    let meta_binding = [1e-3_f32.to_bits(), 32, 32];
+    let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[32, 32] }.to_binding();
     let meta = meta.build(&meta_binding).unwrap();
 
     let saved = graph.compute_saved_nodes();
@@ -45,13 +42,12 @@ fn mul_add_f16() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, meta_binding, &state)
+        .alloc_tensors(&graph, &saved, &meta_binding, &state)
         .unwrap();
 
     let ir = graph.lower(meta, &saved).unwrap();
-    let kernels = ctx.compile(&ir, &options).unwrap();
+    let kernels = ctx.compile(&ir).unwrap();
 
     let in_tensors = [
         ctx.init_tensor_f16(&[32, 32], &[f16::from_f32(3.0); 1024])
@@ -68,7 +64,7 @@ fn mul_add_f16() {
     let schedule = ctx
         .schedule(
             kernels,
-            meta_binding,
+            &meta_binding,
             &in_tensors,
             &saved_tensors,
             &[],

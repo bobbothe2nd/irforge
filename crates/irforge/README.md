@@ -8,12 +8,11 @@ Advanced graph-based GPU compiler for linear algebra and AI/ML/DL.
 use irforge::{
     dispatch::{
         CompilationOptions, SimpleDType, DebugCompilationOptions, GpuContext, Graph, MetaBuilder,
-        OptCompilationOptions,
+        OptCompilationOptions, RawMetaBuf,
     },
     io::BpatHeader,
     nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
 };
-use std::time::{Duration, Instant};
 
 const ITERS: usize = 16;
 
@@ -59,7 +58,7 @@ graph.define(|| {
     add(z, e);
 });
 
-let meta_binding = [1e-3_f32.to_bits(), M, N, K, H];
+let meta_binding = RawMetaBuf { lr: 1e-3, dims: &[M, N, K, H] }.to_binding();
 let meta = meta.build(&meta_binding).unwrap();
 
 let saved = graph.compute_saved_nodes();
@@ -67,19 +66,12 @@ let saved = graph.compute_saved_nodes();
 graph.topo_sort().unwrap();
 graph.validate(meta).unwrap();
 
-let meta_binding = ctx.alloc_meta(&meta_binding);
 let saved_tensors = ctx
-    .alloc_tensors(&graph, &saved, meta_binding, &optim.state)
+    .alloc_tensors(&graph, &saved, &meta_binding, &optim.state)
     .unwrap();
 
-let compile_start = Instant::now();
-
 let ir = graph.lower(meta, &saved).unwrap();
-let kernels = ctx.compile(&ir, &options).unwrap();
-
-let compile_elapsed = compile_start.elapsed();
-
-let tensor_start = Instant::now();
+let kernels = ctx.compile(&ir).unwrap();
 
 let in_tensors = ctx
     .load_tensors("data/v2f32_readme.bpat")
@@ -93,12 +85,10 @@ let in_tensors = ctx
         ]
     });
 
-let tensor_elapsed = tensor_start.elapsed();
-
 let mut schedule = ctx
     .schedule(
         kernels,
-        meta_binding,
+        &meta_binding,
         &in_tensors,
         &saved_tensors,
         &[],
