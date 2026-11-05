@@ -1,6 +1,8 @@
 use core::{cmp::Ordering, fmt::Debug};
 use std::{string::String, vec, vec::Vec};
 
+use bitflags::bitflags;
+
 use crate::{
     dispatch::{
         CompilationOptions, GpuBackend, GpuBufferBackend, GpuKernelBackend,
@@ -10,7 +12,7 @@ use crate::{
         },
     },
     errors::{Error, ErrorKind, GraphErrorContext},
-    tensor::Block,
+    tensor::{Block, bf16, f16},
 };
 
 pub mod codegen;
@@ -25,7 +27,6 @@ pub mod rocm;
 
 mod ops;
 
-use half::{bf16, f16};
 pub use ops::Op;
 
 #[cfg(feature = "wgsl")]
@@ -681,9 +682,32 @@ impl PartialOrd for DispatchOptions {
     }
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct GraphOpFlags: u8 {
+        /// The operation maintains a stable iteration space, guaranteeing all inputs have the same shape as the output.
+        const STABLE_ITER = 1 << 0;
+
+        /// Tensor dimensions matter for this operation (same as level 2 | 3 BLAS).
+        const NEEDS_DIMS = 1 << 1;
+
+        /// Each thread computes a single output in the index of its global thread ID.
+        const COMPUTES_GID = 1 << 2;
+
+        /// The operation is expensive and should avoid recomputation.
+        const NO_RECOMPUTE = 1 << 3;
+
+        /// The operations implements no manual saving and requires the compiler to generate it automatically.
+        const AUTO_SAVE = 1 << 4;
+
+        /// The operation saves the same value for both forward and backward.
+        const SAVE_OUTPUT = 1 << 5;
+    }
+}
+
 /// A linear operation in an execution graph.
 ///
-/// This treats lowering functions as unique identifiers, so don't reuse functions.
+/// This treats lowering functions as unique identifiers, so **don't reuse functions**.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub enum GraphOp {
@@ -739,11 +763,7 @@ pub enum GraphOp {
         save: fn(NodeId, &Node, &Graph, &mut [SaveIndicator]),
         valid_shape: fn(NodeId, &Node, &Graph, &mut Vec<Error<GraphErrorContext>>),
         arity: u8,
-        need_dims: bool,
-        stable_iter: bool,
-        auto_save: bool,
-        computes_gid: bool,
-        prefer_separate: bool,
+        flags: GraphOpFlags,
         valid_dispatch: DispatchOptions,
     },
 }
@@ -765,8 +785,8 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_elementwise(&self) -> bool {
-        if let Self::Custom { need_dims, .. } = self {
-            !*need_dims
+        if let Self::Custom { flags, .. } = self {
+            !flags.contains(GraphOpFlags::NEEDS_DIMS)
         } else {
             false
         }
@@ -775,8 +795,8 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_transform(&self) -> bool {
-        if let Self::Custom { stable_iter, .. } = self {
-            !*stable_iter
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::STABLE_ITER)
         } else {
             false
         }
@@ -803,8 +823,18 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_auto_save(&self) -> bool {
-        if let Self::Custom { auto_save, .. } = self {
-            *auto_save
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::AUTO_SAVE)
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn saves_output(&self) -> bool {
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::SAVE_OUTPUT)
         } else {
             false
         }
@@ -813,8 +843,8 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_compute_gid(&self) -> bool {
-        if let Self::Custom { computes_gid, .. } = self {
-            *computes_gid
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::COMPUTES_GID)
         } else {
             false
         }
@@ -823,11 +853,8 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_prefer_separate(&self) -> bool {
-        if let Self::Custom {
-            prefer_separate, ..
-        } = self
-        {
-            *prefer_separate
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::NO_RECOMPUTE)
         } else {
             false
         }
@@ -836,8 +863,8 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_need_dims(&self) -> bool {
-        if let Self::Custom { need_dims, .. } = self {
-            *need_dims
+        if let Self::Custom { flags, .. } = self {
+            flags.contains(GraphOpFlags::NEEDS_DIMS)
         } else {
             false
         }

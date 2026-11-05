@@ -1,16 +1,11 @@
 use crate::{
     dispatch::{
-        CompilationOptions,
-        backend::{
-            Axis, DType, DispatchOptions, Graph, GraphOp, Metadata, NodeId, Op, Param, ParamId,
-            ParamTy, SimpleDType, ValueId, ValueState,
-            kernel::{
+        CompilationOptions, backend::{
+            Axis, DType, DispatchOptions, Graph, GraphOp, GraphOpFlags, Metadata, NodeId, Op, Param, ParamId, ParamTy, SimpleDType, ValueId, ValueState, kernel::{
                 Dependencies, KernelsChained, LinkedKernel, NodeInput, RawKernel, SaveIndicator,
             },
         },
-    },
-    errors::{Error, ErrorKind},
-    tensor::Block,
+    }, errors::{Error, ErrorKind}, tensor::Block,
 };
 use core::cmp::Ordering;
 use std::{vec, vec::Vec};
@@ -372,13 +367,15 @@ fn eval_node(
 
         GraphOp::Custom {
             lower,
-            stable_iter,
-            need_dims,
+            flags,
             valid_dispatch,
-            computes_gid,
-            prefer_separate,
             ..
         } => {
+            let need_dims = flags.contains(GraphOpFlags::NEEDS_DIMS);
+            let prefer_separate = flags.contains(GraphOpFlags::NO_RECOMPUTE);
+            let stable_iter = flags.contains(GraphOpFlags::STABLE_ITER);
+            let computes_gid = flags.contains(GraphOpFlags::COMPUTES_GID);
+
             let mut least_valid_dispatch = DispatchOptions::Any;
 
             if need_dims || prefer_separate {

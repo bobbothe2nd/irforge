@@ -1,13 +1,9 @@
 use fused_gpu::{
     dispatch::{
-        CompilationOptions,
-        backend::{
-            Axis, DType, DispatchOptions, Graph, GraphOp, Node, NodeId, Op, Param, ParamId,
-            SimpleDType, ValueId, ValueState,
-            kernel::{LinkedKernel, NodeInput, SaveIndicator},
+        CompilationOptions, backend::{
+            Axis, DType, DispatchOptions, Graph, GraphOp, GraphOpFlags, Node, NodeId, Op, Param, ParamId, SimpleDType, ValueId, ValueState, kernel::{LinkedKernel, NodeInput, SaveIndicator},
         },
-    },
-    errors::{Error, ErrorKind, GraphErrorContext},
+    }, errors::{Error, ErrorKind, GraphErrorContext},
 };
 use std::{format, vec, vec::Vec};
 
@@ -735,11 +731,7 @@ pub fn softmax(graph: &mut Graph, x: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: lower_softmax_recursive,
             arity: 1,
-            need_dims: true,
-            stable_iter: false,
-            auto_save: false,
-            computes_gid: false,
-            prefer_separate: true,
+            flags: GraphOpFlags::NEEDS_DIMS | GraphOpFlags::COMPUTES_GID | GraphOpFlags::SAVE_OUTPUT,
             save,
             valid_shape,
             display: |inputs| format!("softmax({:?})", inputs[0]),

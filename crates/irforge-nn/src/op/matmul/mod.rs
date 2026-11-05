@@ -1,9 +1,7 @@
 use fused_gpu::{
     dispatch::{
         CompilationOptions, DebugCompilationOptions, TargetFlags, backend::{
-            Axis, DType, DispatchOptions, Graph, GraphOp, Node, NodeId, Op, Param, ParamId,
-            SimpleDType, ValueId, ValueState,
-            kernel::{LinkedKernel, NodeInput, SaveIndicator},
+            Axis, DType, DispatchOptions, Graph, GraphOp, GraphOpFlags, Node, NodeId, Op, Param, ParamId, SimpleDType, ValueId, ValueState, kernel::{LinkedKernel, NodeInput, SaveIndicator},
         },
     }, errors::{Error, ErrorKind, GraphErrorContext},
 };
@@ -281,11 +279,11 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
                 generic_matmul_recursive
             },
             arity: 2,
-            need_dims: true,
-            stable_iter: false,
-            auto_save: !is_wmma,
-            computes_gid: !is_wmma,
-            prefer_separate: true,
+            flags: GraphOpFlags::NEEDS_DIMS | GraphOpFlags::NO_RECOMPUTE | GraphOpFlags::SAVE_OUTPUT | if is_wmma {
+                GraphOpFlags::empty()
+            } else {
+                GraphOpFlags::AUTO_SAVE | GraphOpFlags::COMPUTES_GID
+            },
             save,
             valid_shape,
             display: |inputs| format!("{:?} @ {:?}", inputs[0], inputs[1]),
