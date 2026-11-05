@@ -275,7 +275,7 @@ pub fn tanh(graph: &mut Graph, x: NodeId) -> NodeId {
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 1.0 }),
+                        Some(dtype.constant_float(1.0)?),
                     );
                     let forward_squared = kernel.raw.def_var(
                         DType::Simple(dtype),
@@ -334,7 +334,7 @@ pub fn elu(graph: &mut Graph, x: NodeId) -> NodeId {
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 1.0 }),
+                        Some(dtype.constant_float(1.0)?),
                     );
 
                     let exp_inp = kernel.raw.def_var(
@@ -374,7 +374,7 @@ pub fn elu(graph: &mut Graph, x: NodeId) -> NodeId {
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 1.0 }),
+                        Some(dtype.constant_float(1.0)?),
                     );
 
                     let forward_plus_one = kernel.raw.def_var(
@@ -495,26 +495,22 @@ pub fn gelu(graph: &mut Graph, x: NodeId) -> NodeId {
                     let gelu_a = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 {
-                            val: THAT_RANDOM_DECIMAL,
-                        }),
+                        Some(dtype.constant_float(3.0)?),
                     );
                     let gelu_b = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 {
-                            val: SQRT_FRAC_PI_2,
-                        }),
+                        Some(dtype.constant_float(SQRT_FRAC_PI_2)?),
                     );
                     let half = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 0.5 }),
+                        Some(dtype.constant_float(0.5)?),
                     );
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 1.0 }),
+                        Some(dtype.constant_float(1.0)?),
                     );
 
                     let xx = kernel.raw.def_var(
@@ -582,31 +578,27 @@ pub fn gelu(graph: &mut Graph, x: NodeId) -> NodeId {
                     let half = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 0.5 }),
+                        Some(dtype.constant_float(0.5)?),
                     );
                     let one = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 1.0 }),
+                        Some(dtype.constant_float(1.0)?),
                     );
                     let three = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 { val: 3.0 }),
+                        Some(dtype.constant_float(3.0)?),
                     );
                     let gelu_a = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 {
-                            val: THAT_RANDOM_DECIMAL,
-                        }),
+                        Some(dtype.constant_float(THAT_RANDOM_DECIMAL)?),
                     );
                     let gelu_b = kernel.raw.def_var(
                         DType::Simple(dtype),
                         ValueState::Inline,
-                        Some(Op::ConstF32 {
-                            val: SQRT_FRAC_PI_2,
-                        }),
+                        Some(dtype.constant_float(SQRT_FRAC_PI_2)?),
                     );
                     let gelu_c = kernel.raw.def_var(
                         DType::Simple(dtype),
