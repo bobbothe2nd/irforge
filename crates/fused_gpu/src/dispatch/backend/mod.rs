@@ -796,7 +796,7 @@ impl GraphOp {
     #[must_use]
     pub const fn is_transform(&self) -> bool {
         if let Self::Custom { flags, .. } = self {
-            flags.contains(GraphOpFlags::STABLE_ITER)
+            !flags.contains(GraphOpFlags::STABLE_ITER)
         } else {
             false
         }
@@ -805,13 +805,13 @@ impl GraphOp {
     #[inline]
     #[must_use]
     pub const fn is_leaf(&self) -> bool {
-        matches!(self, Self::Input | Self::ConstF32(_))
+        self.is_input() || self.is_const()
     }
 
     #[inline]
     #[must_use]
     pub const fn is_const(&self) -> bool {
-        matches!(self, Self::ConstF32(_))
+        matches!(self, Self::ConstF32(_) | Self::ConstF16(_) | Self::ConstBf16(_) | Self::ConstU32(_) | Self::ConstI32(_))
     }
 
     #[inline]

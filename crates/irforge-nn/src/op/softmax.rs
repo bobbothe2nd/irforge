@@ -7,6 +7,8 @@ use fused_gpu::{
 };
 use std::{format, vec, vec::Vec};
 
+// probably should cache locally or in shared memory instead of doing everything from global memory
+
 pub fn lower_softmax_recursive(
     eval_node: impl Fn(
         NodeId,
@@ -701,10 +703,6 @@ pub fn softmax(graph: &mut Graph, x: NodeId) -> NodeId {
                     | SaveIndicator::DEFINED_IN_BACKWARD
                     | SaveIndicator::USED_BY_BACKWARD;
             }
-        }
-
-        for out in &node.outputs {
-            saved[*out] |= SaveIndicator::DEFINED_IN_BACKWARD | SaveIndicator::USED_BY_BACKWARD;
         }
     }
 

@@ -153,7 +153,8 @@ impl TensorLayout {
 #[inline]
 pub fn newline(pretty_print: bool, out: &mut String, nesting: usize) {
     if pretty_print {
-        for _ in 0..=nesting {
+        out.push('\n');
+        for _ in 0..nesting {
             out.push(' ');
         }
     } else {

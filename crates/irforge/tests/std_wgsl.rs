@@ -189,11 +189,21 @@ fn matmul_sub_softmax_forward_backward() {
 
 #[test]
 fn div_const_softmax_forward_backward() {
+    use simplelog::*;
+
     let mut meta = MetaBuilder::new();
     let m = meta.new_field();
     let n = meta.new_field();
 
     let state = Optim::sgd().state;
+
+    let logs = std::fs::File::create("E:/fused_gpu/logs/div_const_softmax_forward_backward.log").unwrap();
+    CombinedLogger::init(
+        vec![
+            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), logs),
+        ]
+    ).unwrap();
 
     let mut graph = Graph::new(CROSS_ENTROPY, Optim::sgd().lower);
 
@@ -204,7 +214,7 @@ fn div_const_softmax_forward_backward() {
     let options = CompilationOptions {
         target: ctx.detect_target(),
         opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
+        debug: DebugCompilationOptions::PRETTY_PRINT_IR,
     };
 
     graph.set_options(options);
@@ -258,6 +268,7 @@ fn div_const_softmax_forward_backward() {
     let grad_tensors = &saved_tensors.grad_tensors;
 
     ctx.download(out_tensor, &mut dst, 0).unwrap();
+    println!("{dst:?}");
     assert!(dst.iter().all(|x| *x == 2.0 + (1.0 / 32.0)));
 
     ctx.download(&grad_tensors[0], &mut dst, 0).unwrap();

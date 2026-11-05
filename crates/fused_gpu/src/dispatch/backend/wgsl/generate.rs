@@ -72,7 +72,7 @@ fn emit_bindings(
     pretty_print: bool,
 ) -> Result<(), Error> {
     let _ = write!(out, "struct Meta {{");
-    newline(pretty_print, out, 0);
+    newline(pretty_print, out, 1);
     let _ = write!(out, "f0: f32,");
     for f in 1..kernel.meta.fields {
         newline(pretty_print, out, 1);

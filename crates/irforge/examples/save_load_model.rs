@@ -28,11 +28,11 @@ fn main() {
     const D_VAL: f32 = 0.007;
     const E_VAL: f32 = 0.008;
 
+    let logs = File::create("logs/model.log").unwrap();
     CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, Config::default(), File::create("model.log").unwrap()),
-            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("model.log").unwrap()),
+            WriteLogger::new(LevelFilter::Debug, Config::default(), logs),
         ]
     ).unwrap();
 
@@ -51,7 +51,7 @@ fn main() {
     let options = CompilationOptions {
         target: ctx.detect_target(),
         opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
+        debug: DebugCompilationOptions::PRETTY_PRINT_IR,
     };
 
     graph.set_options(options);

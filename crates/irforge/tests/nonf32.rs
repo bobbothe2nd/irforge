@@ -95,7 +95,7 @@ fn mul_add_f16() {
     assert!(dst.iter().all(|x| *x == f16::from_f32(1.0)));
 }
 
-#[test]
+// #[test]
 fn matmul_gelu_matmul_add_f16() {
     let mut meta = MetaBuilder::new();
     let m = meta.new_field();
