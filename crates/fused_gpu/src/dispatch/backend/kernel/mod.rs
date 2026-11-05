@@ -661,6 +661,7 @@ impl RawKernel {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum NodeInput {
     Param {
         param: ParamId,

@@ -1000,7 +1000,7 @@ fn check_shapes(graph: &Graph, errors: &mut Vec<Error<GraphErrorContext>>) {
 #[derive(Debug)]
 pub struct Graph {
     pub nodes: Vec<Node>,
-    pub target: Option<TargetCompilationOptions>,
+    pub options: Option<CompilationOptions>,
     pub(crate) loss: LossType,
     pub(crate) optim: OptimType,
 }
@@ -1011,7 +1011,7 @@ impl Graph {
     pub const fn new(loss: LossType, optim: OptimType) -> Self {
         Self {
             nodes: Vec::new(),
-            target: None,
+            options: None,
             loss,
             optim,
         }
@@ -1240,10 +1240,13 @@ impl Graph {
     pub fn lower(
         &self,
         meta: Metadata,
-        options: &CompilationOptions,
         saved: &[SaveIndicator],
     ) -> Result<KernelGroup, Error> {
-        KernelsChained::lower(self, meta, saved, options)
+        KernelsChained::lower(self, meta, saved, &self.options.ok_or(Error {
+            msg: "no compilation options attached to graph",
+            kind: ErrorKind::InvalidArgument,
+            ctx: (),
+        })?)
     }
 
     pub fn push_node(&mut self, node: Node) -> NodeId {

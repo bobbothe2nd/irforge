@@ -13,9 +13,6 @@ use irforge::{
     io::BpatHeader,
     nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
 };
-use gpu_telemetry::monitor::{GpuMonitor, telemetry::Telemetry};
-use rand_core::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
 use std::time::{Duration, Instant};
 
 const ITERS: usize = 16;
@@ -41,6 +38,14 @@ let optim = Optim::sgd();
 
 let mut graph = Graph::new(MEAN_SQUARED_ERROR, optim.lower);
 
+let ctx = GpuContext::new().unwrap();
+let options = CompilationOptions {
+    target: ctx.detect_target(),
+    opt: OptCompilationOptions::default(),
+    debug: DebugCompilationOptions::empty(),
+};
+
+graph.set_options(options);
 graph.define(|| {
     let a = input(&[m, k], SimpleDType::F32);
     let b = input(&[k, n], SimpleDType::F32);
@@ -62,13 +67,6 @@ let saved = graph.compute_saved_nodes();
 graph.topo_sort().unwrap();
 graph.validate(meta).unwrap();
 
-let ctx = GpuContext::new().unwrap();
-let options = CompilationOptions {
-    target: ctx.detect_target(),
-    opt: OptCompilationOptions::default(),
-    debug: DebugCompilationOptions::empty(),
-};
-
 let meta_binding = ctx.alloc_meta(&meta_binding);
 let saved_tensors = ctx
     .alloc_tensors(&graph, &saved, meta_binding, &optim.state)
@@ -76,7 +74,7 @@ let saved_tensors = ctx
 
 let compile_start = Instant::now();
 
-let ir = graph.lower(meta, &options, &saved).unwrap();
+let ir = graph.lower(meta, &saved).unwrap();
 let kernels = ctx.compile(&ir, &options).unwrap();
 
 let compile_elapsed = compile_start.elapsed();
@@ -110,17 +108,11 @@ let mut schedule = ctx
 
 let mut epoch = 0;
 
-let mut rng = XorShiftRng::seed_from_u64(0);
-
 let target = {
-    let target = 2.0 * (rng.next_u32() as f32 / u32::MAX as f32) - 1.0;
-
-    let arr = [target; (H * H) as usize];
+    let arr = [2.0; (H * H) as usize];
 
     ctx.init_tensor_f32(&[H, H], &arr)
 }.unwrap();
-
-let monitor: GpuMonitor<Telemetry> = GpuMonitor::start(Duration::from_millis(10)).unwrap();
 
 for _ in 0..ITERS {
     ctx.dispatch_forward(&schedule).unwrap();
@@ -131,27 +123,6 @@ for _ in 0..ITERS {
 ctx.dispatch_optim(&mut schedule).unwrap();
 
 ctx.sync().unwrap();
-
-let telemetry = monitor.stop().unwrap();
-
-let mut max_budget = 0;
-let mut accum_usage = 0;
-
-for sample in &telemetry.samples {
-    for heap in &sample.heaps {
-        if let Some(usage) = heap.usage {
-            accum_usage += usage;
-        }
-
-        if let Some(budget) = heap.budget
-            && budget > max_budget
-        {
-            max_budget = budget;
-        }
-    }
-}
-
-let avg_usage = accum_usage / (telemetry.samples.len() as u64);
 
 ctx.save_tensors("data/v2f32_readme.bpat", &in_tensors, BpatHeader::BpatV2f32)
     .unwrap();

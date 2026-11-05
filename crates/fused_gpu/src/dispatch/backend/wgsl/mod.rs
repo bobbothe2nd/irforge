@@ -11,7 +11,8 @@ use crate::{
     tensor::{Block, ToBuffer, build_dims},
 };
 use briny::raw::cast::cast_slice;
-use std::vec::Vec;
+use core::range::Range;
+use std::{num::NonZeroU8, vec::Vec};
 
 pub use wgpu::{
     BackendOptions, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry,
@@ -24,7 +25,7 @@ pub use wgpu::{
     InstanceFlags, Limits, MemoryBudgetThresholds, MemoryHints, NoopBackendOptions,
     PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor, PollStatus, PollType,
     PowerPreference, Queue, RequestAdapterError, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderSource, ShaderStages, SubmissionIndex, Trace,
+    ShaderSource, ShaderStages, SubmissionIndex, Trace, AdapterInfo,
     util::{BufferInitDescriptor, DeviceExt},
 };
 
@@ -35,6 +36,7 @@ pub mod generate;
 pub struct GpuContext {
     device: Device,
     queue: Queue,
+    subgroup: Range<u32>,
 }
 
 impl GpuContext {
@@ -88,6 +90,8 @@ impl GpuContext {
 
         let adapter_limits = adapter.limits();
 
+        let AdapterInfo { subgroup_min_size, subgroup_max_size, .. } = adapter.get_info();
+
         let (device, queue) = match adapter
             .request_device(&DeviceDescriptor {
                 label: None,
@@ -117,7 +121,7 @@ impl GpuContext {
                 })?,
         };
 
-        Ok(Self { device, queue })
+        Ok(Self { device, queue, subgroup: (subgroup_min_size..subgroup_max_size).into() })
     }
 }
 
@@ -150,8 +154,8 @@ impl GpuBackend for GpuContext {
 
     fn target_spec(&self) -> TargetCompilationOptions {
         TargetCompilationOptions {
-            flags: TargetFlags::empty() /* TargetFlags::LIN_ACC */,
-            subgroup_size: None /* Some(core::num::NonZeroU8::new(32).unwrap()) */,
+            flags: TargetFlags::empty(),
+            subgroup_size: NonZeroU8::new(self.subgroup.end as u8),
         }
     }
 

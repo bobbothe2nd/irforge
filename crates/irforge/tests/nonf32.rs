@@ -20,9 +20,14 @@ fn mul_add_f16() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, n], SimpleDType::F16);
         let b = input(&[m, n], SimpleDType::F16);
@@ -40,18 +45,12 @@ fn mul_add_f16() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [

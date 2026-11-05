@@ -50,9 +50,14 @@ fn main() {
     let mut graph = Graph::new(MEAN_SQUARED_ERROR, optim.lower);
 
     let ctx = GpuContext::new().unwrap();
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -81,12 +86,6 @@ fn main() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::PRETTY_PRINT_IR,
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &optim.state)
@@ -94,7 +93,7 @@ fn main() {
 
     let compile_start = Instant::now();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let compile_elapsed = compile_start.elapsed();

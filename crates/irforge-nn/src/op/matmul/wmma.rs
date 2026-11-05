@@ -88,6 +88,8 @@ pub fn forward_matmul(
         Some(Op::Mul { a: tile_size, b: bid_y }),
     );
 
+    println!("{node_id} := MatMul({a_node:?}, {b_node:?})\n {saved_params:?}");
+
     let a = match a_node {
         NodeInput::Param { param, .. } => *param,
         NodeInput::Node(node_id) => saved_params[*node_id].ok_or(Error {

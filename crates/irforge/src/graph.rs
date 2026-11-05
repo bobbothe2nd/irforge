@@ -11,7 +11,7 @@ use core::{
     ops::{Index, IndexMut},
 };
 use fused_gpu::{
-    dispatch::{TargetCompilationOptions, backend::Graph as InnerGraph}, errors::{Error, GraphErrorContext},
+    dispatch::{backend::Graph as InnerGraph}, errors::{Error, GraphErrorContext},
 };
 use std::rc::Rc;
 
@@ -51,13 +51,13 @@ impl Graph {
     }
 
     #[inline]
-    pub fn set_target(&mut self, target: TargetCompilationOptions) {
-        self.inner_mut().target = Some(target);
+    pub fn set_options(&mut self, options: CompilationOptions) {
+        self.inner_mut().options = Some(options);
     }
 
     #[inline]
-    pub fn get_target(&self) -> Option<TargetCompilationOptions> {
-        self.inner().target
+    pub fn get_options(&self) -> Option<CompilationOptions> {
+        self.inner().options
     }
 
     #[inline]
@@ -109,13 +109,12 @@ impl Graph {
     pub fn lower(
         &mut self,
         meta: Metadata,
-        options: &CompilationOptions,
         saved: &SavedNodes,
     ) -> Result<KernelGroup, Error<GraphErrorContext>> {
         self.inner_mut().rebuild_outputs();
 
         self.inner()
-            .lower(meta.0, options, &saved.0)
+            .lower(meta.0, &saved.0)
             .map_err(move |e| e.into())
     }
 

@@ -29,7 +29,7 @@ pub enum PollStatus {
     Ready,
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct CompilationOptions {
     pub target: TargetCompilationOptions,
     pub debug: DebugCompilationOptions,

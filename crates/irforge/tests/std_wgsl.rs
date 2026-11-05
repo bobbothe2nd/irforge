@@ -22,9 +22,14 @@ fn mul_add_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, n], SimpleDType::F32);
         let b = input(&[m, n], SimpleDType::F32);
@@ -42,18 +47,12 @@ fn mul_add_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [
@@ -112,9 +111,14 @@ fn matmul_sub_softmax_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -133,18 +137,12 @@ fn matmul_sub_softmax_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [
@@ -206,9 +204,14 @@ fn div_const_softmax_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let x = input(&[m, n], SimpleDType::F32);
 
@@ -226,18 +229,12 @@ fn div_const_softmax_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [ctx.init_tensor_f32(&[16, 32], &[3.0; 512]).unwrap()];
@@ -294,9 +291,14 @@ fn matmul_add_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -314,18 +316,12 @@ fn matmul_add_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [
@@ -417,9 +413,14 @@ fn matmul_chain3_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -441,18 +442,12 @@ fn matmul_chain3_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [
@@ -563,9 +558,14 @@ fn matmul_sub_forward_backward() {
     let Ok(ctx) = GpuContext::new() else {
         return;
     };
-    let target = ctx.detect_target();
 
-    graph.set_target(target);
+    let options = CompilationOptions {
+        target: ctx.detect_target(),
+        opt: OptCompilationOptions::default(),
+        debug: DebugCompilationOptions::empty(),
+    };
+
+    graph.set_options(options);
     graph.define(|| {
         let a = input(&[m, k], SimpleDType::F32);
         let b = input(&[k, n], SimpleDType::F32);
@@ -586,18 +586,12 @@ fn matmul_sub_forward_backward() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let options = CompilationOptions {
-        target: graph.get_target().unwrap(),
-        opt: OptCompilationOptions::default(),
-        debug: DebugCompilationOptions::empty(),
-    };
-
     let meta_binding = ctx.alloc_meta(&meta_binding);
     let saved_tensors = ctx
         .alloc_tensors(&graph, &saved, meta_binding, &state)
         .unwrap();
 
-    let ir = graph.lower(meta, &options, &saved).unwrap();
+    let ir = graph.lower(meta, &saved).unwrap();
     let kernels = ctx.compile(&ir, &options).unwrap();
 
     let in_tensors = [

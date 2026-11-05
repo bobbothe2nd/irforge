@@ -271,12 +271,12 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     let last_idx = shape.len() - 1;
     shape[last_idx] = graph.nodes[b].shape[last_idx];
 
-    let is_wmma = graph.target.is_some_and(|target| target.subgroup_size.is_some());
+    let is_wmma = graph.options.is_some_and(|options| options.target.subgroup_size.is_some() && (options.target.flags.contains(TargetFlags::LIN_ACC) || options.debug.contains(DebugCompilationOptions::SOFT_MMA)));
 
     graph.push_node(Node {
         op: GraphOp::Custom {
             lower: if is_wmma {
-                maybe_wmma
+                wmma_matmul_recursive
             } else {
                 generic_matmul_recursive
             },
@@ -296,52 +296,4 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
         shape,
         dtype: graph.nodes[a].dtype,
     })
-}
-
-fn maybe_wmma(
-    eval_node: impl Fn(
-        NodeId,
-        &NodeInput,
-        ValueId,
-        &mut Vec<NodeId>,
-        &Graph,
-        &[Option<ParamId>],
-        &[Option<ParamId>],
-        &mut LinkedKernel,
-        ValueId,
-        ValueId,
-        ValueId,
-        ValueId,
-        u32,
-        ValueId,
-        &[Param],
-        &mut bool,
-        &CompilationOptions,
-    ) -> Result<Vec<NodeId>, Error>,
-    root: NodeId,
-    resolved: &mut Vec<NodeId>,
-    backwardness: Option<u8>,
-    node_id: NodeId,
-    graph: &Graph,
-    out: ValueId,
-    node_params: &[Option<ParamId>],
-    saved_params: &[Option<ParamId>],
-    kernel: &mut LinkedKernel,
-    base: ValueId,
-    idx: ValueId,
-    local_row: ValueId,
-    local_col: ValueId,
-    shared_size: u32,
-    tile_size: ValueId,
-    params: &[Param],
-    stable_iteration_space: &mut bool,
-    options: &CompilationOptions,
-) -> Result<Vec<NodeId>, Error> {
-    if options.target.flags.contains(TargetFlags::LIN_ACC)
-        || options.debug.contains(DebugCompilationOptions::SOFT_MMA)
-    {
-        wmma_matmul_recursive(eval_node, root, resolved, backwardness, node_id, graph, out, node_params, saved_params, kernel, base, idx, local_row, local_col, shared_size, tile_size, params, stable_iteration_space, options)
-    } else {
-        generic_matmul_recursive(eval_node, root, resolved, backwardness, node_id, graph, out, node_params, saved_params, kernel, base, idx, local_row, local_col, shared_size, tile_size, params, stable_iteration_space, options)
-    }
 }
