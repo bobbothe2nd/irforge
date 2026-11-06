@@ -3,18 +3,29 @@ use irforge::{
         CompilationOptions, DebugCompilationOptions, GpuContext, Graph, MetaBuilder, OptCompilationOptions, RawMetaBuf, SimpleDType,
     }, io::BpatHeader, nn::{MEAN_SQUARED_ERROR, Optim, add, input, matmul},
 };
+use log::warn;
+use simplelog::*;
 use rand_core::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::{fs::File, time::Instant};
+use std::{fs::OpenOptions, time::Instant};
 
-const PATH: &str = "data/v2f32_test.bpat";
+const MODEL_PATH: &str = "data/v2f32_test.bpat";
+const LOG_PATH: &str = "logs/model.log";
 
 const ITERS: usize = 256;
+const EPOCHS_TO_SYNC: usize = 2;
 const EPOCHS_TO_SAVE: usize = 32;
 
 const LR: f32 = 1e-10;
 
-use simplelog::*;
+macro_rules! prtflsh {
+    ($($arg:tt)*) => {{
+        use std::io::Write;
+        let mut stdout = std::io::stdout().lock();
+        let _ = write!(stdout, $($arg)*);
+        let _ = stdout.flush();
+    }};
+}
 
 fn main() {
     const M: u32 = 768;
@@ -28,7 +39,12 @@ fn main() {
     const D_VAL: f32 = 0.007;
     const E_VAL: f32 = 0.008;
 
-    let logs = File::create("logs/model.log").unwrap();
+    let logs = OpenOptions::new()
+        .truncate(true)
+        .create(true)
+        .write(true)
+        .open(LOG_PATH)
+        .unwrap();
     CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
@@ -83,10 +99,6 @@ fn main() {
     graph.topo_sort().unwrap();
     graph.validate(meta).unwrap();
 
-    let saved_tensors = ctx
-        .alloc_tensors(&graph, &saved, &meta_binding, &optim.state)
-        .unwrap();
-
     let compile_start = Instant::now();
 
     let ir = graph.lower(meta, &saved).unwrap();
@@ -98,7 +110,12 @@ fn main() {
 
     let tensor_start = Instant::now();
 
-    let in_tensors = ctx.load_tensors(PATH).unwrap_or_else(|_| {
+    let saved_tensors = ctx
+        .alloc_tensors(&graph, &saved, &meta_binding, &optim.state)
+        .unwrap();
+
+    let in_tensors = ctx.load_tensors(MODEL_PATH).unwrap_or_else(|_| {
+        warn!("could not load model, re-init tensors");
         vec![
             ctx.init_tensor_f32(&[M, K], &[A_VAL; (M * K) as usize])
                 .unwrap(),
@@ -163,19 +180,24 @@ fn main() {
             println!("EPOCH {epoch} LAUNCH TIME: {launch_elapsed:?} elapsed");
         }
 
+        if epoch % EPOCHS_TO_SYNC == EPOCHS_TO_SYNC - 1 {
+            prtflsh!(" syncing...");
+            let sync_start = Instant::now();
+            ctx.sync().unwrap();
+            let sync_elapsed = sync_start.elapsed();
+            println!("\r synchronized GPU in {sync_elapsed:?} elapsed");
+        }
+
         if epoch % EPOCHS_TO_SAVE == EPOCHS_TO_SAVE - 1 {
-            print!(" saving...");
-            ctx.save_tensors(PATH, &in_tensors, BpatHeader::BpatV2f32)
+            prtflsh!(" saving...");
+            ctx.save_tensors(MODEL_PATH, &in_tensors, BpatHeader::BpatV2f32)
                 .unwrap();
 
-            print!("\r calculating loss...");
+            prtflsh!("\r calculating loss...");
             let mut loss_t = Box::<[f32]>::new_uninit_slice((H * H) as usize);
             ctx.download(&saved_tensors.loss_t, &mut loss_t, 0).unwrap();
             let loss_t = unsafe { loss_t.assume_init() };
             let loss = loss_t.iter().sum::<f32>() / (H * H) as f32;
-
-            print!("\r syncing...         ");
-            ctx.sync().unwrap();
 
             println!("\r saved model @ loss {loss:?}");
         }

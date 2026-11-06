@@ -5,9 +5,9 @@ use briny::traits::Pod;
 use crate::backend::MetaBinding;
 
 #[derive(Debug)]
-pub struct KernelGroup<'a> {
+pub struct KernelGroup {
     pub(crate) inner: Box<backend::kernel::KernelGroup>,
-    pub(crate) options: &'a CompilationOptions,
+    pub(crate) options: CompilationOptions,
 }
 
 #[derive(Debug)]

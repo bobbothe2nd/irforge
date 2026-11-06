@@ -105,16 +105,16 @@ impl Graph {
     }
 
     #[inline]
-    pub fn lower<'a>(
-        &'a mut self,
+    pub fn lower(
+        &mut self,
         meta: Metadata,
         saved: &SavedNodes,
-    ) -> Result<KernelGroup<'a>, Error<GraphErrorContext>> {
+    ) -> Result<KernelGroup, Error<GraphErrorContext>> {
         self.inner_mut().rebuild_outputs();
 
         let ir = self.inner()
             .lower(meta.0, &saved.0)?;
-        let options = self.inner().options.as_ref().unwrap();
+        let options = self.inner().options.unwrap();
         Ok(KernelGroup { inner: Box::new(ir), options })
     }
 

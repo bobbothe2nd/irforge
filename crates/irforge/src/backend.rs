@@ -256,7 +256,7 @@ impl<B: GpuBackend> GpuContext<B> {
         &self,
         ir: &'a KernelGroup,
     ) -> Result<GpuKernelGroup<'a, B>, Error> {
-        self.0.compile(&ir.inner, ir.options)
+        self.0.compile(&ir.inner, &ir.options)
     }
 
     #[inline]
