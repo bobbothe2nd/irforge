@@ -726,6 +726,7 @@ pub fn softmax(graph: &mut Graph, x: NodeId) -> NodeId {
     }
 
     graph.push_node(Node {
+        name: "softmax".into(),
         op: GraphOp::Custom {
             lower: lower_softmax_recursive,
             arity: 1,

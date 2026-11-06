@@ -69,6 +69,7 @@ fn save_mul_div(_node_id: NodeId, node: &Node, graph: &Graph, saved: &mut [SaveI
 
 pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "add".into(),
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
@@ -222,6 +223,7 @@ pub fn add(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
 pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "mul".into(),
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
@@ -425,6 +427,7 @@ pub fn mul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
 pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "sub".into(),
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,
@@ -610,6 +613,7 @@ pub fn sub(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
 
 pub fn div(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "div".into(),
         op: GraphOp::Custom {
             lower: |eval_node: fn(
                 NodeId,

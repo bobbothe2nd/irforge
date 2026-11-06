@@ -58,7 +58,7 @@ pub fn generate_wgsl(
     emit_entry(kernel, &mut out, options, pretty_print)?;
 
     if pretty_print {
-        debug!("generated kernel:\n{out}");
+        debug!("generated kernel {}:\n{out}", kernel.name);
     }
 
     Ok(out)

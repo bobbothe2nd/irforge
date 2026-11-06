@@ -120,7 +120,7 @@ pub fn lower_backward(
                 let root_node = &graph.nodes[root];
 
                 let (mut kernel, base, gid) =
-                    gen_kernel(meta, &params, [tile_size, tile_size, 1], root, root_node);
+                    gen_kernel(format!("back_{}", root_node.name).into_boxed_str(), meta, &params, [tile_size, tile_size, 1], root, root_node);
 
                 let upstream = kernel.raw.def_var(
                     DType::Simple(root_node.dtype),
@@ -368,6 +368,7 @@ fn eval_grad(
 }
 
 fn gen_kernel(
+    name: Box<str>,
     meta: Metadata,
     params: &[Param],
     block: [u32; 3],
@@ -376,6 +377,7 @@ fn gen_kernel(
 ) -> (LinkedKernel, ValueId, ValueId) {
     let mut kernel = LinkedKernel {
         raw: RawKernel {
+            name,
             meta,
             shared: Vec::new(),
             vals: Vec::new(),

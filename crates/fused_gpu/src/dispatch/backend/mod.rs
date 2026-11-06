@@ -513,6 +513,7 @@ impl TryFrom<u8> for Axis {
 
 #[derive(Debug, Clone)]
 pub struct Node {
+    pub name: Box<str>,
     pub op: GraphOp,
     pub inputs: Box<[NodeId]>,
     pub outputs: Vec<NodeId>,
@@ -1291,6 +1292,7 @@ impl Graph {
 
     fn add_node<T: Into<Box<[usize]>>>(
         &mut self,
+        name: &'static str,
         op: GraphOp,
         inputs: T,
         shape: T,
@@ -1306,6 +1308,7 @@ impl Graph {
         }
 
         self.nodes.push(Node {
+            name: name.into(),
             outputs: Vec::new(),
             op,
             inputs,
@@ -1317,27 +1320,27 @@ impl Graph {
     }
 
     pub fn input(&mut self, shape: &[MetaId], dtype: SimpleDType) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::Input, &[], shape, dtype)
+        self.add_node::<&[usize]>("input", GraphOp::Input, &[], shape, dtype)
     }
 
     pub fn constant_f32(&mut self, data: f32) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::ConstF32(data), &[], &[], SimpleDType::F32)
+        self.add_node::<&[usize]>("const_f32", GraphOp::ConstF32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_u32(&mut self, data: u32) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::ConstU32(data), &[], &[], SimpleDType::F32)
+        self.add_node::<&[usize]>("const_u32", GraphOp::ConstU32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_i32(&mut self, data: i32) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::ConstI32(data), &[], &[], SimpleDType::F32)
+        self.add_node::<&[usize]>("const_i32", GraphOp::ConstI32(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_f16(&mut self, data: f16) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::ConstF16(data), &[], &[], SimpleDType::F32)
+        self.add_node::<&[usize]>("const_f16", GraphOp::ConstF16(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn constant_bf16(&mut self, data: bf16) -> NodeId {
-        self.add_node::<&[usize]>(GraphOp::ConstBf16(data), &[], &[], SimpleDType::F32)
+        self.add_node::<&[usize]>("const_bf16", GraphOp::ConstBf16(data), &[], &[], SimpleDType::F32)
     }
 
     pub fn repeat<I>(&mut self, count: usize, mut start: I, structure: fn(&mut Self, I) -> I) {

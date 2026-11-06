@@ -272,6 +272,7 @@ pub fn matmul(graph: &mut Graph, a: NodeId, b: NodeId) -> NodeId {
     let is_wmma = graph.options.is_some_and(|options| options.target.subgroup_size.is_some() && (options.target.flags.contains(TargetFlags::LIN_ACC) || options.debug.contains(DebugCompilationOptions::SOFT_MMA)));
 
     graph.push_node(Node {
+        name: "matmul".into(),
         op: GraphOp::Custom {
             lower: if is_wmma {
                 wmma_matmul_recursive

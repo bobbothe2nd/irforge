@@ -102,6 +102,7 @@ pub fn lower_forward(
 
             let mut kernel = LinkedKernel {
                 raw: RawKernel {
+                    name: format!("forward_{}", root_node.name).into_boxed_str(),
                     meta,
                     shared: Vec::new(),
                     vals: Vec::new(),

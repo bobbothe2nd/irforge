@@ -217,6 +217,7 @@ macro_rules! lower_unary {
 
 pub fn log(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "log".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -254,6 +255,7 @@ pub fn log(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn tanh(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "tanh".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -309,6 +311,7 @@ pub fn tanh(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn elu(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "elu".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -412,6 +415,7 @@ pub fn elu(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn relu(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "relu".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -467,6 +471,7 @@ pub fn gelu(graph: &mut Graph, x: NodeId) -> NodeId {
     const SQRT_FRAC_PI_2: f32 = 0.797_884_6;
 
     graph.push_node(Node {
+        name: "gelu".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -695,6 +700,7 @@ pub fn gelu(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn exp(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "exp".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -732,6 +738,7 @@ pub fn exp(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn abs(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "abs".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,
@@ -798,6 +805,7 @@ pub fn abs(graph: &mut Graph, x: NodeId) -> NodeId {
 
 pub fn neg(graph: &mut Graph, x: NodeId) -> NodeId {
     graph.push_node(Node {
+        name: "neg".into(),
         op: GraphOp::Custom {
             lower: lower_unary!(
                 dtype,

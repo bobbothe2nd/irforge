@@ -16,6 +16,7 @@ pub fn lower_loss(graph: &Graph, meta: Metadata) -> Result<Kernel, Error> {
 
     let mut kernel = Kernel {
         raw: RawKernel {
+            name: "loss".into(),
             meta,
             shared: Vec::new(),
             vals: Vec::new(),

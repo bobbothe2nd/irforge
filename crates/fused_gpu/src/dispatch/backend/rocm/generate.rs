@@ -66,7 +66,7 @@ using namespace hip::wmma;
     out.push('}');
 
     if pretty_print {
-        debug!("generated kernel:\n{out}");
+        debug!("generated kernel {}:\n{out}", src.name);
     }
 
     Ok(out)

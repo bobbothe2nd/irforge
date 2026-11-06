@@ -383,6 +383,8 @@ impl LinkedKernel {
 
 #[derive(Debug, Clone)]
 pub struct RawKernel {
+    pub name: Box<str>,
+
     pub meta: Metadata,
 
     pub shared: Vec<SharedAlloc>,

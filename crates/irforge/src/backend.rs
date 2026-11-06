@@ -30,7 +30,7 @@ use crate::{
     }, graph::Graph,
 };
 
-pub struct SavedNodes(pub(crate) Vec<SaveIndicator>);
+pub struct SavedNodes(pub(crate) Box<[SaveIndicator]>);
 
 pub struct MetaBinding(pub(crate) [u32]);
 

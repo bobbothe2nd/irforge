@@ -91,7 +91,7 @@ impl Graph {
     #[inline]
     #[must_use]
     pub fn compute_saved_nodes(&self) -> SavedNodes {
-        SavedNodes(self.inner().compute_saved_nodes())
+        SavedNodes(self.inner().compute_saved_nodes().into_boxed_slice())
     }
 
     #[inline]
