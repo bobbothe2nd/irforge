@@ -730,7 +730,7 @@ pub fn softmax(graph: &mut Graph, x: NodeId) -> NodeId {
         op: GraphOp::Custom {
             lower: lower_softmax_recursive,
             arity: 1,
-            flags: GraphOpFlags::NEEDS_DIMS | GraphOpFlags::COMPUTES_GID | GraphOpFlags::SAVE_OUTPUT,
+            flags: GraphOpFlags::NEEDS_DIMS | GraphOpFlags::SAVE_OUTPUT,
             save,
             valid_shape,
             display: |inputs| format!("softmax({:?})", inputs[0]),
