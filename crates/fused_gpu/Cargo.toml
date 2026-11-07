@@ -15,7 +15,7 @@ categories = ["compilers", "mathematics"]
 default = ["rocm"]
 
 wgsl = ["dep:wgpu", "dep:pollster"]
-rocm = ["dep:rocm-rt"]
+rocm = ["dep:roc"]
 io = ["dep:crc32fast"]
 telemetry = ["dep:gpu_telemetry"]
 
@@ -28,8 +28,8 @@ crc32fast = { version = "1.5", optional = true }
 pollster = { version = "1", optional = true }
 log = "0.4.34"
 
-[dependencies.rocm-rt]
-version = "0.2.2"
+[dependencies.roc]
+version = "0.3.1"
 features = [
   "dynamic-loading",
   "std",

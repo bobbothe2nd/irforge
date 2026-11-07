@@ -1,15 +1,15 @@
 #![allow(unsafe_code)]
 
-use rocm_rt::hip::{graph::StreamCaptureMode, module::Module};
-pub use rocm_rt::{
+use roc::hip::{graph::StreamCaptureMode, module::Module};
+pub use roc::{
     hip::{
         HipError,
         callback::Callback,
         device::Device,
         graph::{ExecGraph, Graph, GraphInstantiateFlags, KernelParams, Node},
-        memory::{Buffer, DevMapped, DevMappedAlloc},
+        memory::{Buffer, HostSlice, HostBuffer},
         module::{Func, LaunchConfig},
-        stream::Stream,
+        stream::HipStream,
     },
     hiprtc::{
         HiprtcError,
@@ -51,14 +51,13 @@ macro_rules! map_err {
 
 #[must_use]
 pub fn is_rocm_present() -> bool {
-    rocm_rt::is_amdhip64_present() && rocm_rt::is_hiprtc_present()
+    roc::is_amdhip64_present() && roc::is_hiprtc_present()
 }
 
 #[derive(Debug)]
 pub struct GpuContext {
-    device: Device,
     arch: GfxVersion,
-    stream: Stream,
+    stream: HipStream,
 }
 
 impl GpuContext {
@@ -68,10 +67,9 @@ impl GpuContext {
             device.gfx_version(),
             "failed to get GFX version from device"
         )?;
-        let stream = map_err!(Stream::create(), "failed to get GFX version from device")?;
+        let stream = map_err!(HipStream::create(), "failed to get GFX version from device")?;
 
         Ok(Self {
-            device,
             arch,
             stream,
         })
@@ -85,32 +83,28 @@ impl GpuBackend for GpuContext {
     type Schedule<'a> = Schedule<'a>;
 
     fn alloc(&self, len: u32) -> Result<Self::Buffer, Error> {
-        map_err!(self.device.alloc(len), "failed to allocate GPU buffer")
+        map_err!(self.stream.alloc(len), "failed to allocate GPU buffer")
     }
 
     fn alloc_zeroed(&self, len: u32) -> Result<Self::Buffer, Error> {
         map_err!(
-            self.device.alloc_zeroed(len),
+            self.stream.alloc_zeroed(len),
             "failed to allocate GPU buffer"
         )
     }
 
     fn alloc_init(&self, data: &[u8]) -> Result<Self::Buffer, Error> {
-        let host_buf = unsafe { DevMapped::from_slice(data) };
-        let just_mapped = unsafe { host_buf.map().is_ok() };
+        let host_buf = map_err!(
+            self.stream.host_slice(data),
+            "failed to map host buffer"
+        )?;
 
         let buf = self.alloc(data.len() as u32)?;
 
         map_err!(
-            host_buf.copy_to_dev(&buf, 0, 0, data.len()),
+            host_buf.copy_to_dev(&buf, 0, 0, data.len() as u32),
             "failed copying host to device"
         )?;
-
-        if just_mapped {
-            unsafe {
-                map_err!(host_buf.unmap(), "failed to unmap device buffer")?;
-            }
-        }
 
         Ok(buf)
     }
@@ -118,21 +112,17 @@ impl GpuBackend for GpuContext {
     fn alloc_meta(&self, data: &[u32]) -> Result<Self::MetaBuf, Error> {
         let data = slice_to_bytes(data);
 
-        let host_buf = unsafe { DevMapped::from_slice(data) };
-        let just_mapped = unsafe { host_buf.map().is_ok() };
+        let host_buf = map_err!(
+            self.stream.host_slice(data),
+            "failed to map host slice"
+        )?;
 
         let buf = self.alloc(data.len() as u32)?;
 
         map_err!(
-            host_buf.copy_to_dev(&buf, 0, 0, data.len()),
+            host_buf.copy_to_dev(&buf, 0, 0, data.len() as u32),
             "failed copying host to device"
         )?;
-
-        if just_mapped {
-            unsafe {
-                map_err!(host_buf.unmap(), "failed to unmap device buffer")?;
-            }
-        }
 
         Ok(buf)
     }
@@ -186,24 +176,17 @@ impl GpuBackend for GpuContext {
     fn download(&self, buffer: &Self::Buffer, out: &mut [u8], src_off: u32) -> Result<(), Error> {
         let len = out.len();
 
-        let (host_buf, just_mapped) = match DevMapped::new(out) {
-            Ok(buf) => (buf, true),
-            Err(HipError::HostMemoryAlreadyRegistered) => {
-                (unsafe { DevMapped::from_slice(out) }, false)
-            }
-            e => return map_err!(e, "failed to allocate host buffer").map(|_| {}),
-        };
+        let mut host_buf = map_err!(
+            self.stream.host_slice_mut(out),
+            "failed to map host buffer"
+        )?;
 
         map_err!(
-            buffer.copy_to_host(&host_buf, src_off as usize, 0, len),
+            buffer.copy_to_host(&mut host_buf, src_off, 0, len as u32),
             "failed to copy from GPU to host"
         )?;
 
-        if just_mapped {
-            unsafe { map_err!(host_buf.unmap(), "failed to unmap host buffer") }
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn dispatch_kernel(
@@ -402,29 +385,22 @@ impl GpuBackend for GpuContext {
     }
 
     fn upload(&self, buffer: &Self::Buffer, data: &[u8], dst_off: u32) -> Result<(), Error> {
-        let host_buf = unsafe { DevMapped::from_slice(data) };
-
-        let just_mapped = match unsafe { host_buf.map() } {
-            Ok(()) => true,
-            Err(HipError::HostMemoryAlreadyRegistered) => false,
-            e => return map_err!(e, "failed to register host memory"),
-        };
+        let host_buf = map_err!(
+            self.stream.host_slice(data),
+            "failed to map host buffer"
+        )?;
 
         map_err!(
-            host_buf.copy_to_dev(buffer, 0, dst_off as usize, data.len()),
+            host_buf.copy_to_dev(buffer, 0, dst_off, data.len() as u32),
             "failed to copy host to GPU device"
         )?;
 
-        if just_mapped {
-            unsafe { map_err!(host_buf.unmap(), "failed to unregister data in upload") }
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn copy(&self, src: &Self::Buffer, dst: &Self::Buffer) -> Result<(), Error> {
         map_err!(
-            src.copy_to(dst, 0, 0, src.size() as usize),
+            src.copy_to(dst, 0, 0, src.size()),
             "failed to copy GPU buffer"
         )
     }
